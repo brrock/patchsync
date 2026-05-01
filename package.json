@@ -1,0 +1,22 @@
+{
+  "name": "patchsync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/main.ts",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "minimatch": "^10.0.1",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.0"
+  }
+}

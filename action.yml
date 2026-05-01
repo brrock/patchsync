@@ -1,0 +1,88 @@
+name: "PatchSync"
+description: "Keep a patch stack working against upstream using ACPX coding agents"
+author: "Benjy"
+
+branding:
+  icon: "git-pull-request"
+  color: "purple"
+
+inputs:
+  config:
+    description: "Path to patchsync config file"
+    required: false
+    default: "patchsync.config.json"
+
+  mode:
+    description: "check, fix, or pr"
+    required: false
+    default: "pr"
+
+  create-pr:
+    description: "Whether to create a pull request after successful repair"
+    required: false
+    default: "true"
+
+  create-issue-on-failure:
+    description: "Whether to create an issue if the agent cannot repair the patch stack"
+    required: false
+    default: "true"
+
+  github-token:
+    description: "GitHub token used to create PRs/issues"
+    required: false
+    default: "${{ github.token }}"
+
+outputs:
+  status:
+    description: "clean, repaired, failed, or skipped"
+    value: "${{ steps.patchsync.outputs.status }}"
+
+  latest-supported-commit:
+    description: "Latest upstream commit verified by the patch stack"
+    value: "${{ steps.patchsync.outputs.latest-supported-commit }}"
+
+  pull-request-url:
+    description: "Created pull request URL, if any"
+    value: "${{ steps.patchsync.outputs.pull-request-url }}"
+
+  release-built:
+    description: "Whether release artifacts were built in this run"
+    value: "${{ steps.patchsync.outputs.release-built }}"
+
+  artifact-paths:
+    description: "Newline-delimited list of built artifact paths"
+    value: "${{ steps.patchsync.outputs.artifact-paths }}"
+
+  upstream-release-tag:
+    description: "Resolved upstream release tag when release mode uses upstream releases"
+    value: "${{ steps.patchsync.outputs.upstream-release-tag }}"
+
+  release-trigger:
+    description: "Reason the release policy did or did not run"
+    value: "${{ steps.patchsync.outputs.release-trigger }}"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: "latest"
+
+    - name: Install PatchSync dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: bun install --frozen-lockfile
+
+    - name: Run PatchSync
+      id: patchsync
+      shell: bash
+      env:
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_CREATE_PR: ${{ inputs.create-pr }}
+        INPUT_CREATE_ISSUE_ON_FAILURE: ${{ inputs.create-issue-on-failure }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        PATCHSYNC_REPO_ROOT: ${{ github.workspace }}
+        PATCHSYNC_ACTION_PATH: ${{ github.action_path }}
+      run: bun run "${PATCHSYNC_ACTION_PATH}/src/main.ts"
