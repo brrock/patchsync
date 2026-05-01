@@ -1,6 +1,4 @@
-export type AcpxEvent = Record<string, unknown> & {
-  type?: string;
-};
+export type AcpxEvent = Record<string, unknown>;
 
 export type AcpxRunSummary = {
   eventCount: number;
@@ -36,27 +34,21 @@ export function parseAcpxJsonLines(stdout: string): {
       const event = JSON.parse(line) as AcpxEvent;
       events.push(event);
 
-      const type = typeof event.type === "string" ? event.type : "unknown";
-      summary.eventTypes[type] = (summary.eventTypes[type] ?? 0) + 1;
+      const bucket = classifyEvent(event);
+      summary.eventTypes[bucket] = (summary.eventTypes[bucket] ?? 0) + 1;
 
-      if (type === "assistant_message") {
-        const text = getString(event, ["text", "content", "message"]);
-        if (text) {
-          summary.finalAssistantText = text;
-        }
+      const assistantText = extractAssistantText(event);
+      if (assistantText) {
+        summary.finalAssistantText += assistantText;
       }
 
-      if (type === "tool_call") {
-        summary.toolCalls.push({
-          title: getString(event, ["title", "toolName", "tool_name"]) || "tool",
-          status: getString(event, ["status"]) || "unknown",
-        });
+      const toolCall = extractToolCall(event);
+      if (toolCall) {
+        summary.toolCalls.push(toolCall);
       }
 
-      if (type === "error" || type === "agent_error" || type === "tool_error") {
-        const errorMessage =
-          getString(event, ["message", "text", "error"]) ||
-          JSON.stringify(event);
+      const errorMessage = extractError(event);
+      if (errorMessage) {
         summary.errors.push(errorMessage);
       }
     } catch (error) {
@@ -72,16 +64,101 @@ export function parseAcpxJsonLines(stdout: string): {
   return { events, summary };
 }
 
-function getString(
-  event: Record<string, unknown>,
-  keys: string[],
-): string | undefined {
-  for (const key of keys) {
-    const value = event[key];
-    if (typeof value === "string" && value.trim()) {
-      return value;
+function classifyEvent(event: Record<string, unknown>) {
+  const method = typeof event.method === "string" ? event.method : undefined;
+  if (method === "session/update") {
+    const sessionUpdate = getNestedString(event, ["params", "sessionUpdate"]);
+    if (sessionUpdate) {
+      return `session/update:${sessionUpdate}`;
     }
+    const nestedUpdate = getNestedString(event, [
+      "params",
+      "update",
+      "sessionUpdate",
+    ]);
+    if (nestedUpdate) {
+      return `session/update:${nestedUpdate}`;
+    }
+    return "session/update";
+  }
+
+  if (method) {
+    return method;
+  }
+
+  const stopReason = getNestedString(event, ["result", "stopReason"]);
+  if (stopReason) {
+    return `result:${stopReason}`;
+  }
+
+  if (Object.hasOwn(event, "error")) {
+    return "error";
+  }
+
+  return "unknown";
+}
+
+function extractAssistantText(event: Record<string, unknown>) {
+  const method = typeof event.method === "string" ? event.method : undefined;
+  if (method !== "session/update") {
+    return "";
+  }
+
+  const text =
+    getNestedString(event, ["params", "content", "text"]) ??
+    getNestedString(event, ["params", "update", "content", "text"]);
+
+  return text ?? "";
+}
+
+function extractToolCall(event: Record<string, unknown>) {
+  const method = typeof event.method === "string" ? event.method : undefined;
+  if (method !== "session/update") {
+    return null;
+  }
+
+  const sessionUpdate =
+    getNestedString(event, ["params", "sessionUpdate"]) ??
+    getNestedString(event, ["params", "update", "sessionUpdate"]);
+
+  if (sessionUpdate !== "tool_call" && sessionUpdate !== "tool_call_update") {
+    return null;
+  }
+
+  return {
+    title:
+      getNestedString(event, ["params", "title"]) ??
+      getNestedString(event, ["params", "update", "title"]) ??
+      "tool",
+    status:
+      getNestedString(event, ["params", "status"]) ??
+      getNestedString(event, ["params", "update", "status"]) ??
+      sessionUpdate,
+  };
+}
+
+function extractError(event: Record<string, unknown>) {
+  if (Object.hasOwn(event, "error")) {
+    return (
+      getNestedString(event, ["error", "message"]) ?? JSON.stringify(event)
+    );
   }
 
   return undefined;
+}
+
+function getNestedString(
+  root: Record<string, unknown>,
+  path: string[],
+): string | undefined {
+  let current: unknown = root;
+
+  for (const key of path) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+
+  return typeof current === "string" && current.trim() ? current : undefined;
 }

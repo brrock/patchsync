@@ -315,7 +315,9 @@ async function markSupported(config: PatchSyncConfig, commit: string) {
 async function assertOnlyAllowedFilesChanged(patterns: string[]) {
   const files = await changedFiles(repoRoot);
   const disallowed = files.filter(
-    (file) => !patterns.some((pattern) => minimatch(file, pattern)),
+    (file) =>
+      !file.startsWith(".patchsync-tmp/") &&
+      !patterns.some((pattern) => minimatch(file, pattern)),
   );
 
   if (disallowed.length > 0) {
