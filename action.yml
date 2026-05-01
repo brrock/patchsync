@@ -32,6 +32,16 @@ inputs:
     required: false
     default: "${{ github.token }}"
 
+  git-user-name:
+    description: "Git author name used for PatchSync commits"
+    required: false
+    default: "patchsync[bot]"
+
+  git-user-email:
+    description: "Git author email used for PatchSync commits"
+    required: false
+    default: "41898282+github-actions[bot]@users.noreply.github.com"
+
 outputs:
   status:
     description: "clean, repaired, failed, or skipped"
@@ -82,6 +92,8 @@ runs:
         INPUT_MODE: ${{ inputs.mode }}
         INPUT_CREATE_PR: ${{ inputs.create-pr }}
         INPUT_CREATE_ISSUE_ON_FAILURE: ${{ inputs.create-issue-on-failure }}
+        INPUT_GIT_USER_NAME: ${{ inputs.git-user-name }}
+        INPUT_GIT_USER_EMAIL: ${{ inputs.git-user-email }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         PATCHSYNC_REPO_ROOT: ${{ github.workspace }}
         PATCHSYNC_ACTION_PATH: ${{ github.action_path }}
