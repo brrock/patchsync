@@ -82,7 +82,7 @@ runs:
     - name: Install PatchSync dependencies
       shell: bash
       working-directory: ${{ github.action_path }}
-      run: bun install --frozen-lockfile
+      run: bun install --frozen-lockfile --production
 
     - name: Run PatchSync
       id: patchsync
