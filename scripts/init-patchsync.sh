@@ -9,7 +9,7 @@ config_path="${root_dir}/patchsync.config.json"
 latest_supported_commit_path="${root_dir}/LATEST_SUPPORTED_COMMIT"
 workflow_dir="${root_dir}/.github/workflows"
 workflow_path="${workflow_dir}/patchsync.yml"
-action_ref="${PATCHSYNC_ACTION_REF:-brrock/patchsync@v1}"
+action_ref="${PATCHSYNC_ACTION_REF:-brrock/patchsync@main}"
 
 mkdir -p "${patch_one_dir}"
 
