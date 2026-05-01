@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { parseAcpxJsonLines, type AcpxRunSummary } from "./acpx-events";
 import type { PatchSyncConfig } from "./config";
 import type { PatchSyncLogger } from "./logger";
-import { runCommand } from "./shell";
+import { runCommand, runCommandArgs } from "./shell";
 
 const BUILT_IN_AGENT_INSTALLERS: Record<string, string> = {
   claude: "bun i -g @anthropic-ai/claude-code",
@@ -120,28 +120,22 @@ Verification:
 `.trim();
 
   const effectiveMode = await resolveEffectiveAgentMode(options);
-
-  if (
-    effectiveMode === "exec" &&
-    normalizeProvider(options.config.agent.provider) === "codex" &&
-    options.config.agent.reasoningEffort
-  ) {
-    core.warning(
-      "agent.reasoningEffort is only applied for codex session mode; exec mode will ignore it.",
-    );
-  }
+  const modelId = resolveAgentModel(options.config);
 
   const args =
     effectiveMode === "exec"
       ? [...globalArgs, options.config.agent.provider, "exec", prompt]
       : [...globalArgs, options.config.agent.provider, prompt];
 
-  const result = await runCommand({
-    command: shellJoin([
+  const result = await runCommandArgs({
+    argv: [
       "bunx",
       `acpx@${options.config.agent.acpxVersion}`,
+      "--format",
+      "json",
+      "--json-strict",
       ...args,
-    ]),
+    ],
     cwd: options.targetDir,
     env: {
       ...process.env,
@@ -157,6 +151,7 @@ Verification:
     ok: result.ok,
     requestedMode: options.config.agent.mode,
     effectiveMode,
+    model: modelId ?? null,
     eventCount: parsed.summary.eventCount,
     eventTypes: parsed.summary.eventTypes,
     toolCalls: parsed.summary.toolCalls.slice(-10),
@@ -217,8 +212,9 @@ function normalizeProvider(provider: string) {
 function buildGlobalArgs(config: PatchSyncConfig) {
   const args = ["--approve-all", "--non-interactive-permissions", "fail"];
 
-  if (config.agent.model) {
-    args.push("--model", config.agent.model);
+  const model = resolveAgentModel(config);
+  if (model) {
+    args.push("--model", model);
   }
 
   return args;
@@ -235,40 +231,14 @@ async function ensureSessionConfigured(options: {
     ...globalArgs,
   ];
 
-  const ensureSession = await runCommand({
-    command: shellJoin([
-      ...prefix,
-      options.config.agent.provider,
-      "sessions",
-      "ensure",
-    ]),
+  const ensureSession = await runCommandArgs({
+    argv: [...prefix, options.config.agent.provider, "sessions", "ensure"],
     cwd: options.targetDir,
     env: process.env,
   });
 
   if (!ensureSession.ok) {
     throw new Error(sessionFailureMessage("setup", ensureSession));
-  }
-
-  if (
-    normalizeProvider(options.config.agent.provider) === "codex" &&
-    options.config.agent.reasoningEffort
-  ) {
-    const thoughtLevel = await runCommand({
-      command: shellJoin([
-        ...prefix,
-        options.config.agent.provider,
-        "set",
-        "thought_level",
-        options.config.agent.reasoningEffort,
-      ]),
-      cwd: options.targetDir,
-      env: process.env,
-    });
-
-    if (!thoughtLevel.ok) {
-      throw new Error(sessionFailureMessage("thought_level", thoughtLevel));
-    }
   }
 }
 
@@ -299,10 +269,6 @@ async function resolveEffectiveAgentMode(options: {
     );
     return "exec" as const;
   }
-}
-
-function shellJoin(args: string[]) {
-  return args.map((arg) => JSON.stringify(arg)).join(" ");
 }
 
 function emitAcpxLogLines(summary: AcpxRunSummary, stderr: string) {
@@ -342,6 +308,22 @@ function sessionFailureMessage(
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function resolveAgentModel(config: PatchSyncConfig) {
+  if (!config.agent.model) {
+    return undefined;
+  }
+
+  if (
+    normalizeProvider(config.agent.provider) === "codex" &&
+    config.agent.reasoningEffort &&
+    !config.agent.model.includes("/")
+  ) {
+    return `${config.agent.model}/${config.agent.reasoningEffort}`;
+  }
+
+  return config.agent.model;
 }
 
 async function materializeAgentAuthFiles(logger: PatchSyncLogger) {

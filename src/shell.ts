@@ -5,13 +5,36 @@ export type CommandResult = {
   stderr: string;
 };
 
-export async function runCommand(options: {
-  command: string;
+type CommandOptions = {
   cwd: string;
   timeoutMs?: number;
   env?: NodeJS.ProcessEnv;
   inherit?: boolean;
-}): Promise<CommandResult> {
+};
+
+export async function runCommand(
+  options: CommandOptions & {
+    command: string;
+  },
+): Promise<CommandResult> {
+  return runSpawnedCommand({
+    argv: ["bash", "-lc", options.command],
+    cwd: options.cwd,
+    timeoutMs: options.timeoutMs,
+    env: options.env,
+    inherit: options.inherit,
+  });
+}
+
+export async function runCommandArgs(
+  options: CommandOptions & {
+    argv: string[];
+  },
+): Promise<CommandResult> {
+  return runSpawnedCommand(options);
+}
+
+async function runSpawnedCommand(options: CommandOptions & { argv: string[] }) {
   const controller = new AbortController();
   const timeout =
     options.timeoutMs === undefined
@@ -19,7 +42,7 @@ export async function runCommand(options: {
       : setTimeout(() => controller.abort(), options.timeoutMs);
 
   try {
-    const result = Bun.spawn(["bash", "-lc", options.command], {
+    const result = Bun.spawn(options.argv, {
       cwd: options.cwd,
       stdout: options.inherit ? "inherit" : "pipe",
       stderr: options.inherit ? "inherit" : "pipe",
