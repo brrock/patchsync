@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "patchsync.schema.json",
+  "title": "PatchSync configuration",
+  "type": "object",
+  "required": ["target", "verify"],
+  "additionalProperties": true,
+  "properties": {
+    "target": {
+      "type": "object",
+      "required": ["repo"],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Upstream repository in owner/repo form."
+        },
+        "ref": {
+          "type": "string",
+          "default": "main"
+        }
+      }
+    },
+    "patches": {
+      "type": "object",
+      "properties": {
+        "dir": {
+          "type": "string",
+          "default": "patches"
+        },
+        "latestSupportedCommitFile": {
+          "type": "string",
+          "default": "LATEST_SUPPORTED_COMMIT"
+        }
+      }
+    },
+    "verify": {
+      "type": "object",
+      "required": ["patched"],
+      "properties": {
+        "baseline": {
+          "type": "string"
+        },
+        "patched": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowSameBaselineFailure": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "install": {
+          "type": "object",
+          "required": ["command"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "when": {
+          "type": "string",
+          "enum": [
+            "every_upstream_nightly",
+            "every_upstream_commit",
+            "every_upstream_release"
+          ],
+          "default": "every_upstream_commit"
+        },
+        "prereleaseSource": {
+          "type": "string",
+          "enum": ["ignore", "include", "only"],
+          "default": "ignore"
+        },
+        "buildCommand": {
+          "type": "string"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "provider": {
+          "type": "string",
+          "default": "codex"
+        },
+        "model": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["session", "exec"],
+          "default": "exec"
+        },
+        "timeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        },
+        "acpxVersion": {
+          "type": "string",
+          "default": "latest"
+        },
+        "install": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "command": {
+              "type": "string",
+              "description": "Optional custom install command. If omitted, PatchSync uses the built-in installer for the configured provider."
+            }
+          }
+        },
+        "breakingChange": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "createIssue": {
+              "type": "boolean",
+              "default": true
+            },
+            "failWorkflow": {
+              "type": "boolean",
+              "default": true
+            },
+            "markerFiles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["BREAKING_CHANGE.md"]
+            },
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["patchsync", "breaking-change"]
+            }
+          }
+        },
+        "createIssueOnBreakingChange": {
+          "type": "boolean",
+          "default": true
+        },
+        "onlyModify": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "patches/**",
+            "patchsync.config.json",
+            "LATEST_SUPPORTED_COMMIT"
+          ]
+        }
+      }
+    },
+    "pullRequest": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "branchPrefix": {
+          "type": "string",
+          "default": "patchsync/"
+        },
+        "title": {
+          "type": "string",
+          "default": "chore: update patch stack"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["patchsync"]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "./patchsync.schema.json",
+  "target": {
+    "repo": "owner/upstream-repo",
+    "ref": "main"
+  },
+  "patches": {
+    "dir": "patches",
+    "latestSupportedCommitFile": "LATEST_SUPPORTED_COMMIT"
+  },
+  "verify": {
+    "baseline": "bun test",
+    "patched": "bun test",
+    "allowSameBaselineFailure": true
+  },
+  "dependencies": {
+    "install": {
+      "enabled": true,
+      "command": "bun install --frozen-lockfile"
+    }
+  },
+  "release": {
+    "enabled": true,
+    "when": "every_upstream_release",
+    "prereleaseSource": "ignore",
+    "buildCommand": "bun run build",
+    "artifacts": ["dist/**", "build/**"]
+  },
+  "agent": {
+    "enabled": true,
+    "provider": "codex",
+    "model": "gpt-5.4",
+    "reasoningEffort": "high",
+    "mode": "session",
+    "timeoutMinutes": 30,
+    "install": {
+      "enabled": true
+    },
+    "breakingChange": {
+      "enabled": true,
+      "createIssue": true,
+      "failWorkflow": true,
+      "markerFiles": ["BREAKING_CHANGE.md"],
+      "labels": ["patchsync", "breaking-change"]
+    },
+    "acpxVersion": "latest",
+    "createIssueOnBreakingChange": true,
+    "onlyModify": [
+      "patches/**",
+      "patchsync.config.json",
+      "LATEST_SUPPORTED_COMMIT"
+    ]
+  },
+  "pullRequest": {
+    "enabled": true,
+    "branchPrefix": "patchsync/",
+    "title": "chore: update patch stack",
+    "labels": ["patchsync", "ai-maintained"]
+  }
+}
