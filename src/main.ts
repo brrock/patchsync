@@ -260,6 +260,9 @@ async function main() {
 
     status = "repaired";
     core.setOutput("status", status);
+  } catch (error) {
+    failureSummary = error instanceof Error ? error.message : String(error);
+    throw error;
   } finally {
     logger.appendSummary("PatchSync", {
       status,
@@ -315,9 +318,7 @@ async function markSupported(config: PatchSyncConfig, commit: string) {
 async function assertOnlyAllowedFilesChanged(patterns: string[]) {
   const files = await changedFiles(repoRoot);
   const disallowed = files.filter(
-    (file) =>
-      !file.startsWith(".patchsync-tmp/") &&
-      !patterns.some((pattern) => minimatch(file, pattern)),
+    (file) => !patterns.some((pattern) => minimatch(file, pattern)),
   );
 
   if (disallowed.length > 0) {

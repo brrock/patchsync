@@ -2,6 +2,8 @@ import { $ } from "bun";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
+const EXCLUDE_TEMP = ":(exclude).patchsync-tmp";
+
 export async function cloneTargetRepo(options: {
   repo: string;
   ref: string;
@@ -19,16 +21,23 @@ export async function currentCommit(cwd: string) {
 }
 
 export async function hasChanges(cwd: string) {
-  const status = await $`git status --porcelain`.cwd(cwd).text();
+  const status = await $`git status --porcelain -- . ${EXCLUDE_TEMP}`
+    .cwd(cwd)
+    .text();
   return status.trim().length > 0;
 }
 
 export async function changedFiles(cwd: string) {
-  const output = await $`git diff --name-only`.cwd(cwd).text();
-  const staged = await $`git diff --cached --name-only`.cwd(cwd).text();
-  const untracked = await $`git ls-files --others --exclude-standard`
+  const output = await $`git diff --name-only -- . ${EXCLUDE_TEMP}`
     .cwd(cwd)
     .text();
+  const staged = await $`git diff --cached --name-only -- . ${EXCLUDE_TEMP}`
+    .cwd(cwd)
+    .text();
+  const untracked =
+    await $`git ls-files --others --exclude-standard -- . ${EXCLUDE_TEMP}`
+      .cwd(cwd)
+      .text();
 
   return [
     ...output.split("\n"),
@@ -45,7 +54,7 @@ export async function createBranch(branch: string, cwd: string) {
 }
 
 export async function commitAll(message: string, cwd: string) {
-  await $`git add -A`.cwd(cwd);
+  await $`git add -A -- . ${EXCLUDE_TEMP}`.cwd(cwd);
   await $`git commit -m ${message}`.cwd(cwd);
 }
 
