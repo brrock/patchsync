@@ -156,6 +156,8 @@ jobs:
         env:
           OPENAI_API_KEY: \${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: \${{ secrets.ANTHROPIC_API_KEY }}
+          PATCHSYNC_CODEX_AUTH_JSON: \${{ secrets.PATCHSYNC_CODEX_AUTH_JSON }}
+          PATCHSYNC_OPENCODE_AUTH_JSON: \${{ secrets.PATCHSYNC_OPENCODE_AUTH_JSON }}
 
       - uses: actions/upload-artifact@v4
         if: steps.patchsync.outputs.release-built == 'true'

@@ -13,6 +13,8 @@ Publishing behavior:
 - `pullRequest.enabled: true`: PatchSync pushes a branch and opens a PR
 - `pullRequest.enabled: false`: PatchSync commits and pushes directly to the repository default branch
 
+The action input `create-pr: false` only suppresses PR creation for that run. It does not change the configured publish mode to a direct push.
+
 ## ACPX Agents
 
 Configure the ACPX adapter and model in `patchsync.config.json`:
@@ -37,6 +39,13 @@ For custom providers, set `agent.install.command`.
 
 PatchSync invokes ACPX with `--approve-all --non-interactive-permissions fail` so repair turns can edit files and run verification on GitHub runners. `agent.model` maps to ACPX `--model`. For Codex, `agent.reasoningEffort` maps to `acpx codex set thought_level <value>` when `agent.mode` is `session`.
 During repair, PatchSync runs ACPX with JSON output enabled and emits parsed event summaries directly to the GitHub Action log and job summary.
+
+For file-based agent auth on GitHub runners:
+
+- Set `PATCHSYNC_CODEX_AUTH_JSON` to the full contents of `~/.codex/auth.json`
+- Set `PATCHSYNC_OPENCODE_AUTH_JSON` to the full contents of `~/.local/share/opencode/auth.json`
+
+PatchSync will write those files on the runner before agent install and before ACPX runs.
 
 ## Breaking Changes
 
@@ -169,6 +178,8 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PATCHSYNC_CODEX_AUTH_JSON: ${{ secrets.PATCHSYNC_CODEX_AUTH_JSON }}
+          PATCHSYNC_OPENCODE_AUTH_JSON: ${{ secrets.PATCHSYNC_OPENCODE_AUTH_JSON }}
 
       - uses: actions/upload-artifact@v4
         if: steps.patchsync.outputs.release-built == 'true'
