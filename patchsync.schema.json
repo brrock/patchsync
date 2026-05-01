@@ -203,6 +203,11 @@
           "type": "boolean",
           "default": true
         },
+        "cleanUpdates": {
+          "type": "string",
+          "enum": ["direct", "pull_request", "disabled"],
+          "default": "direct"
+        },
         "branchPrefix": {
           "type": "string",
           "default": "patchsync/"

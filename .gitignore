@@ -2,3 +2,4 @@ node_modules/
 .patchsync-tmp/
 dist/
 example/patchsync-test/
+.patchsync-local/
