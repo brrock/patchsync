@@ -54,6 +54,7 @@ export async function createBranch(branch: string, cwd: string) {
 }
 
 export async function commitAll(message: string, cwd: string) {
+  await ensureCommitIdentity(cwd);
   await $`git add -A -- . ${EXCLUDE_TEMP}`.cwd(cwd);
   await $`git commit -m ${message}`.cwd(cwd);
 }
@@ -64,4 +65,15 @@ export async function pushRefspec(refspec: string, cwd: string) {
 
 export function repoWorktreePath(base: string) {
   return join(base, "target");
+}
+
+async function ensureCommitIdentity(cwd: string) {
+  const name =
+    process.env.INPUT_GIT_USER_NAME?.trim() || "patchsync[bot]";
+  const email =
+    process.env.INPUT_GIT_USER_EMAIL?.trim() ||
+    "41898282+github-actions[bot]@users.noreply.github.com";
+
+  await $`git config user.name ${name}`.cwd(cwd);
+  await $`git config user.email ${email}`.cwd(cwd);
 }
