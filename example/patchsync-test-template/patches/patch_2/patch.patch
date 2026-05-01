@@ -1,0 +1,9 @@
+--- a/README.md
++++ b/README.md
+@@ -3,3 +3,5 @@
+-This repository helps demonstrate forking on GitHub.
++This repository is meant to provide an example for forking a repository on GitHub.
++
++PatchSync repaired patch two.
+ 
+ For some more information on how to fork a repository, check out our guide, "Forking Projects"". Thanks! 💖

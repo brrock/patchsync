@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import { parseAcpxJsonLines, type AcpxRunSummary } from "./acpx-events";
 import type { PatchSyncConfig } from "./config";
 import type { PatchSyncLogger } from "./logger";
@@ -22,6 +23,8 @@ const BUILT_IN_AGENT_INSTALLERS: Record<string, string> = {
   qwen: "bun i -g @qwen-code/qwen-code@latest",
 };
 
+let authFilesMaterialized = false;
+
 export async function installCodingAgent(options: {
   config: PatchSyncConfig;
   repoRoot: string;
@@ -32,6 +35,8 @@ export async function installCodingAgent(options: {
   if (!options.config.agent.enabled || !install.enabled) {
     return;
   }
+
+  await materializeAgentAuthFiles(options.logger);
 
   const command = template(resolveInstallCommand(options.config), {
     provider: options.config.agent.provider,
@@ -76,6 +81,8 @@ export async function runAcpxRepair(options: {
   failureSummary: string;
   logger: PatchSyncLogger;
 }) {
+  await materializeAgentAuthFiles(options.logger);
+
   const patchDoc = await readPatchDocs(
     join(options.repoRoot, options.config.patches.dir),
   );
@@ -297,4 +304,43 @@ function emitAcpxLogLines(summary: AcpxRunSummary, stderr: string) {
 
 function truncate(value: string, length: number) {
   return value.length <= length ? value : `${value.slice(0, length)}...`;
+}
+
+async function materializeAgentAuthFiles(logger: PatchSyncLogger) {
+  if (authFilesMaterialized) {
+    return;
+  }
+
+  const mappings = [
+    {
+      envVar: "PATCHSYNC_CODEX_AUTH_JSON",
+      path: join(homedir(), ".codex", "auth.json"),
+      label: "codex",
+    },
+    {
+      envVar: "PATCHSYNC_OPENCODE_AUTH_JSON",
+      path: join(homedir(), ".local", "share", "opencode", "auth.json"),
+      label: "opencode",
+    },
+  ];
+
+  const written: string[] = [];
+
+  for (const mapping of mappings) {
+    const contents = process.env[mapping.envVar];
+    if (!contents) {
+      continue;
+    }
+
+    await mkdir(dirname(mapping.path), { recursive: true });
+    await writeFile(mapping.path, contents, "utf8");
+    await chmod(mapping.path, 0o600).catch(() => {});
+    written.push(`${mapping.label}:${mapping.path}`);
+  }
+
+  if (written.length > 0) {
+    authFilesMaterialized = true;
+    logger.appendSummary("Agent Auth", { written });
+    core.info(`Materialized agent auth files: ${written.join(", ")}`);
+  }
 }

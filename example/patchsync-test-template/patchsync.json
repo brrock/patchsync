@@ -1,0 +1,45 @@
+{
+  "target": {
+    "repo": "octocat/Spoon-Knife",
+    "ref": "main"
+  },
+  "patches": {
+    "dir": "patches",
+    "latestSupportedCommitFile": "LATEST_SUPPORTED_COMMIT"
+  },
+  "verify": {
+    "baseline": "test -f README.md",
+    "patched": "grep -Fq 'PatchSync example patch applied.' README.md",
+    "allowSameBaselineFailure": false
+  },
+  "release": {
+    "enabled": false
+  },
+  "agent": {
+    "enabled": true,
+    "provider": "codex",
+    "model": "gpt-5.4-mini",
+    "mode": "session",
+    "reasoningEffort": "medium",
+    "timeoutMinutes": 30,
+    "install": {
+      "enabled": true
+    },
+    "breakingChange": {
+      "enabled": true,
+      "createIssue": true,
+      "failWorkflow": true,
+      "markerFiles": ["BREAKING_CHANGE.md"],
+      "labels": ["patchsync", "breaking-change"]
+    },
+    "acpxVersion": "latest",
+    "createIssueOnBreakingChange": true,
+    "onlyModify": ["patches/**", "patchsync.json", "LATEST_SUPPORTED_COMMIT"]
+  },
+  "pullRequest": {
+    "enabled": true,
+    "branchPrefix": "patchsync/",
+    "title": "chore: update patch stack",
+    "labels": ["patchsync", "ai-maintained"]
+  }
+}
