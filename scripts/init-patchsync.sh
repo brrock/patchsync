@@ -70,6 +70,7 @@ if [[ ! -f "${config_path}" ]]; then
   },
   "pullRequest": {
     "enabled": true,
+    "cleanUpdates": "direct",
     "branchPrefix": "patchsync/",
     "title": "chore: update patch stack",
     "labels": ["patchsync", "ai-maintained"]

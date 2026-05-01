@@ -348,8 +348,19 @@ async function maybePublishChanges(
   }
 
   const shortSha = latestCommit.slice(0, 12);
+  const publishMode =
+    status === "clean"
+      ? config.pullRequest.cleanUpdates
+      : config.pullRequest.enabled
+        ? "pull_request"
+        : "direct";
 
-  if (!config.pullRequest.enabled) {
+  if (publishMode === "disabled") {
+    core.info("Changes exist, but publishing is disabled for clean updates.");
+    return;
+  }
+
+  if (publishMode === "direct") {
     const baseBranch = repositoryBaseBranch();
     await commitAll(`chore: update patches for ${shortSha}`, repoRoot);
     await pushRefspec(`HEAD:${baseBranch}`, repoRoot);

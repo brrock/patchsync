@@ -10,8 +10,11 @@ It can also build release artifacts from the patched upstream worktree and expos
 
 Publishing behavior:
 
-- `pullRequest.enabled: true`: PatchSync pushes a branch and opens a PR
-- `pullRequest.enabled: false`: PatchSync commits and pushes directly to the repository default branch
+- `pullRequest.cleanUpdates: "direct"`: clean upstream advances publish `LATEST_SUPPORTED_COMMIT` with a direct commit
+- `pullRequest.cleanUpdates: "pull_request"`: clean upstream advances open a PR
+- `pullRequest.cleanUpdates: "disabled"`: clean upstream advances are not published
+- `pullRequest.enabled: true`: repaired patch stacks push a branch and open a PR
+- `pullRequest.enabled: false`: repaired patch stacks commit and push directly to the repository default branch
 
 The action input `create-pr: false` only suppresses PR creation for that run. It does not change the configured publish mode to a direct push.
 
@@ -136,7 +139,7 @@ curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/init-
 This also creates `.github/workflows/patchsync.yml` if it does not already exist.
 Set `PATCHSYNC_ACTION_REF` when running the script to change the generated `uses:` target.
 
-If you disable pull requests in `patchsync.config.json`, the generated workflow will publish direct commits to the repository default branch when updates are needed.
+By default, clean upstream advances publish `LATEST_SUPPORTED_COMMIT` directly to the repository default branch, while repaired patch stacks open a PR. Set `pullRequest.cleanUpdates` to `pull_request` or `disabled` if you want different behavior for clean runs.
 
 Verification runs in this order:
 
@@ -147,6 +150,36 @@ Verification runs in this order:
 5. root `patches/verification.sh`, if present
 6. each patch directory `verification.sh`, if present
 7. run `release.buildCommand` if release policy is active
+
+## Local Patch Maintenance
+
+Install the local maintenance skill from this repo with:
+
+```bash
+bunx skills add brrock/patchsync
+```
+
+Fetch the helper scripts directly if you want them without cloning first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-prepare.sh -o patchsync-local-prepare.sh
+curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-capture.sh -o patchsync-local-capture.sh
+curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-verify.sh -o patchsync-local-verify.sh
+chmod +x patchsync-local-prepare.sh patchsync-local-capture.sh patchsync-local-verify.sh
+```
+
+For local patch authoring and repair work:
+
+- `scripts/patchsync-local-prepare.sh [config] [patch_name]`
+- `scripts/patchsync-local-capture.sh <patch_name> [config]`
+- `scripts/patchsync-local-verify.sh [config]`
+
+Typical flow for updating one patch:
+
+1. `scripts/patchsync-local-prepare.sh patchsync.config.json patch_2`
+2. edit files under `.patchsync-local/target`
+3. `scripts/patchsync-local-capture.sh patch_2 patchsync.config.json`
+4. `scripts/patchsync-local-verify.sh patchsync.config.json`
 
 ## Workflow
 

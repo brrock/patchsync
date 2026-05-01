@@ -68,8 +68,7 @@ export function repoWorktreePath(base: string) {
 }
 
 async function ensureCommitIdentity(cwd: string) {
-  const name =
-    process.env.INPUT_GIT_USER_NAME?.trim() || "patchsync[bot]";
+  const name = process.env.INPUT_GIT_USER_NAME?.trim() || "patchsync[bot]";
   const email =
     process.env.INPUT_GIT_USER_EMAIL?.trim() ||
     "41898282+github-actions[bot]@users.noreply.github.com";

@@ -86,6 +86,9 @@ export const configSchema = z.object({
   pullRequest: z
     .object({
       enabled: z.boolean().default(true),
+      cleanUpdates: z
+        .enum(["direct", "pull_request", "disabled"])
+        .default("direct"),
       branchPrefix: nonEmptyString.default("patchsync/"),
       title: nonEmptyString.default("chore: update patch stack"),
       labels: z.array(z.string()).default(["patchsync"]),
