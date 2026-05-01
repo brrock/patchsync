@@ -119,12 +119,10 @@ Verification:
 - root/per-patch verification.sh scripts are also run by the orchestrator.
 `.trim();
 
-  if (options.config.agent.mode === "session") {
-    await ensureSessionConfigured({
-      config: options.config,
-      targetDir: options.targetDir,
-    });
-  } else if (
+  const effectiveMode = await resolveEffectiveAgentMode(options);
+
+  if (
+    effectiveMode === "exec" &&
     normalizeProvider(options.config.agent.provider) === "codex" &&
     options.config.agent.reasoningEffort
   ) {
@@ -134,7 +132,7 @@ Verification:
   }
 
   const args =
-    options.config.agent.mode === "exec"
+    effectiveMode === "exec"
       ? [...globalArgs, options.config.agent.provider, "exec", prompt]
       : [...globalArgs, options.config.agent.provider, prompt];
 
@@ -157,6 +155,8 @@ Verification:
   options.logger.appendSummary("ACPX", {
     exitCode: result.code,
     ok: result.ok,
+    requestedMode: options.config.agent.mode,
+    effectiveMode,
     eventCount: parsed.summary.eventCount,
     eventTypes: parsed.summary.eventTypes,
     toolCalls: parsed.summary.toolCalls.slice(-10),
@@ -247,9 +247,7 @@ async function ensureSessionConfigured(options: {
   });
 
   if (!ensureSession.ok) {
-    throw new Error(
-      `ACPX session setup failed with exit code ${ensureSession.code}`,
-    );
+    throw new Error(sessionFailureMessage("setup", ensureSession));
   }
 
   if (
@@ -269,10 +267,37 @@ async function ensureSessionConfigured(options: {
     });
 
     if (!thoughtLevel.ok) {
-      throw new Error(
-        `ACPX thought_level setup failed with exit code ${thoughtLevel.code}`,
-      );
+      throw new Error(sessionFailureMessage("thought_level", thoughtLevel));
     }
+  }
+}
+
+async function resolveEffectiveAgentMode(options: {
+  config: PatchSyncConfig;
+  targetDir: string;
+  logger: PatchSyncLogger;
+}) {
+  if (options.config.agent.mode !== "session") {
+    return "exec" as const;
+  }
+
+  try {
+    await ensureSessionConfigured({
+      config: options.config,
+      targetDir: options.targetDir,
+    });
+    return "session" as const;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    options.logger.appendSummary("ACPX Session Fallback", {
+      requestedMode: "session",
+      effectiveMode: "exec",
+      reason: message,
+    });
+    core.warning(
+      `ACPX session setup failed; falling back to exec mode.\n${truncate(message, 4000)}`,
+    );
+    return "exec" as const;
   }
 }
 
@@ -304,6 +329,19 @@ function emitAcpxLogLines(summary: AcpxRunSummary, stderr: string) {
 
 function truncate(value: string, length: number) {
   return value.length <= length ? value : `${value.slice(0, length)}...`;
+}
+
+function sessionFailureMessage(
+  phase: string,
+  result: Awaited<ReturnType<typeof runCommand>>,
+) {
+  return [
+    `ACPX session ${phase} failed with exit code ${result.code}`,
+    result.stdout.trim() ? `stdout:\n${truncate(result.stdout, 4000)}` : "",
+    result.stderr.trim() ? `stderr:\n${truncate(result.stderr, 4000)}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 async function materializeAgentAuthFiles(logger: PatchSyncLogger) {
