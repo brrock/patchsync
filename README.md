@@ -4,9 +4,10 @@
 PatchSync is a Bun monorepo with two packages:
 
 - `@brrock/patchsync-action`: the GitHub Action implementation
-- `@brrock/patchsync`: CLI wrappers for local patch-maintenance scripts
+- `@brrock/patchsync`: TypeScript CLI tools for local patch-maintenance workflows
 
 The action package is bundled and minified with Bun (`bun build --minify`) before execution.
+The CLI package builds Bun-powered TypeScript executables that invoke local maintenance flows.
 
 PatchSync is a GitHub Action for maintaining patch stacks against an upstream repository.
 

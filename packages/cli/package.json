@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "bin": {
-    "patchsync-local-prepare": "bin/patchsync-local-prepare",
-    "patchsync-local-capture": "bin/patchsync-local-capture",
-    "patchsync-local-verify": "bin/patchsync-local-verify"
+    "patchsync-local-prepare": "dist/patchsync-local-prepare.js",
+    "patchsync-local-capture": "dist/patchsync-local-capture.js",
+    "patchsync-local-verify": "dist/patchsync-local-verify.js"
   },
   "scripts": {
-    "build": "chmod +x bin/patchsync-local-prepare bin/patchsync-local-capture bin/patchsync-local-verify"
+    "build": "bun build src/patchsync-local-prepare.ts src/patchsync-local-capture.ts src/patchsync-local-verify.ts --target bun --outdir dist --minify --banner '#!/usr/bin/env bun'"
   }
 }
