@@ -2,6 +2,7 @@
   "name": "@brrock/patchsync",
   "version": "0.1.0",
   "private": false,
+  "files":["bin"],
   "type": "module",
   "bin": {
     "patchsync": "dist/main.js"

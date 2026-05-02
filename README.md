@@ -134,11 +134,11 @@ Patch directories are applied in lexicographic order. Root `patches/*.patch` fil
 Initialize the layout with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/init-patchsync.sh | bash -s -- .
+patchsync init .
 ```
 
 This also creates `.github/workflows/patchsync.yml` if it does not already exist.
-Set `PATCHSYNC_ACTION_REF` when running the script to change the generated `uses:` target.
+Set `PATCHSYNC_ACTION_REF` when running the CLI to change the generated `uses:` target.
 
 By default, clean upstream advances publish `LATEST_SUPPORTED_COMMIT` directly to the repository default branch, while repaired patch stacks open a PR. Set `pullRequest.cleanUpdates` to `pull_request` or `disabled` if you want different behavior for clean runs.
 
@@ -184,30 +184,18 @@ From a repo clone, the built entrypoints are:
 Example usage:
 
 ```bash
+patchsync init .
 patchsync prepare [config] [patch_name]
 patchsync capture <patch_name> [config]
 patchsync verify [config]
 ```
 
-The CLI wrappers dispatch to the bundled repo scripts, so the script workflow still works too.
-
-Fetch the helper scripts directly if you want them without cloning first:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-prepare.sh -o patchsync-local-prepare.sh
-curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-capture.sh -o patchsync-local-capture.sh
-curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-verify.sh -o patchsync-local-verify.sh
-chmod +x patchsync-local-prepare.sh patchsync-local-capture.sh patchsync-local-verify.sh
-```
-
 For local patch authoring and repair work:
 
+- `patchsync init [root]`
 - `patchsync prepare [config] [patch_name]`
 - `patchsync capture <patch_name> [config]`
 - `patchsync verify [config]`
-- `scripts/patchsync-local-prepare.sh [config] [patch_name]`
-- `scripts/patchsync-local-capture.sh <patch_name> [config]`
-- `scripts/patchsync-local-verify.sh [config]`
 
 Typical flow for updating one patch:
 
