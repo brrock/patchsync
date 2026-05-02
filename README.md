@@ -184,9 +184,9 @@ From a repo clone, the built entrypoints are:
 Example usage:
 
 ```bash
-patchsync local prepare [config] [patch_name]
-patchsync local capture <patch_name> [config]
-patchsync local verify [config]
+patchsync prepare [config] [patch_name]
+patchsync capture <patch_name> [config]
+patchsync verify [config]
 ```
 
 The CLI wrappers dispatch to the bundled repo scripts, so the script workflow still works too.
@@ -202,19 +202,19 @@ chmod +x patchsync-local-prepare.sh patchsync-local-capture.sh patchsync-local-v
 
 For local patch authoring and repair work:
 
-- `patchsync local prepare [config] [patch_name]`
-- `patchsync local capture <patch_name> [config]`
-- `patchsync local verify [config]`
+- `patchsync prepare [config] [patch_name]`
+- `patchsync capture <patch_name> [config]`
+- `patchsync verify [config]`
 - `scripts/patchsync-local-prepare.sh [config] [patch_name]`
 - `scripts/patchsync-local-capture.sh <patch_name> [config]`
 - `scripts/patchsync-local-verify.sh [config]`
 
 Typical flow for updating one patch:
 
-1. `patchsync local prepare patchsync.config.json patch_2`
+1. `patchsync prepare patchsync.config.json patch_2`
 2. edit files under `.patchsync-local/target`
-3. `patchsync local capture patch_2 patchsync.config.json`
-4. `patchsync local verify patchsync.config.json`
+3. `patchsync capture patch_2 patchsync.config.json`
+4. `patchsync verify patchsync.config.json`
 
 ## Workflow
 

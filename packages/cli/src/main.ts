@@ -6,17 +6,17 @@ function printHelp(): void {
   console.error(`PatchSync CLI
 
 Usage:
-  patchsync local <command> [args]
+  patchsync <command> [args]
 
-Local commands:
+Commands:
   prepare [config] [patch_name]
   capture <patch_name> [config]
   verify [config]
 
 Examples:
-  patchsync local prepare patchsync.config.json patch_2
-  patchsync local capture patch_2 patchsync.config.json
-  patchsync local verify patchsync.config.json
+  patchsync prepare patchsync.config.json patch_2
+  patchsync capture patch_2 patchsync.config.json
+  patchsync verify patchsync.config.json
 `);
 }
 
@@ -29,22 +29,16 @@ function parseLocalCommand(value: string | undefined): LocalCommand | null {
 }
 
 async function main(): Promise<void> {
-  const [scope, commandName, ...args] = process.argv.slice(2);
+  const [commandName, ...args] = process.argv.slice(2);
 
-  if (!scope || scope === "--help" || scope === "-h" || scope === "help") {
+  if (!commandName || commandName === "--help" || commandName === "-h" || commandName === "help") {
     printHelp();
-    process.exit(scope ? 0 : 1);
-  }
-
-  if (scope !== "local") {
-    console.error(`Unknown PatchSync scope: ${scope}`);
-    printHelp();
-    process.exit(1);
+    process.exit(commandName ? 0 : 1);
   }
 
   const command = parseLocalCommand(commandName);
   if (!command) {
-    console.error(`Unknown local command: ${commandName ?? "(missing)"}`);
+    console.error(`Unknown PatchSync command: ${commandName}`);
     printHelp();
     process.exit(1);
   }
