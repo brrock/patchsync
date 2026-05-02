@@ -1,6 +1,13 @@
 # PatchSync
 <img width="1536" height="1024" alt="patchsync-img" src="https://github.com/user-attachments/assets/bc4b2ff5-fb51-40d3-bbad-d168b80f3b05" />
 
+PatchSync is a Bun monorepo with two packages:
+
+- `@brrock/patchsync-action`: the GitHub Action implementation
+- `@brrock/patchsync`: CLI wrappers for local patch-maintenance scripts
+
+The action package is bundled and minified with Bun (`bun build --minify`) before execution.
+
 PatchSync is a GitHub Action for maintaining patch stacks against an upstream repository.
 
 It deterministically clones upstream, applies ordered patch directories, runs verification, and records the latest verified upstream commit in `LATEST_SUPPORTED_COMMIT`. If the stack no longer applies or fails verification, PatchSync can delegate repair to an ACPX coding agent configured in `patchsync.config.json`, regenerate patch files, verify from a clean clone, and open a pull request.
@@ -157,7 +164,8 @@ Verification runs in this order:
 Install the local maintenance skill from this repo with:
 
 ```bash
-bunx skills add brrock/patchsync
+bunx skills add @brrock/patchsync-action
+bunx skills add @brrock/patchsync
 ```
 
 Fetch the helper scripts directly if you want them without cloning first:
@@ -220,4 +228,25 @@ jobs:
         with:
           name: patchsync-artifacts
           path: ${{ steps.patchsync.outputs.artifact-paths }}
+```
+
+
+## Monorepo Development
+
+Build everything:
+
+```bash
+bun run build
+```
+
+Build only the action bundle (minified):
+
+```bash
+bun run build:action
+```
+
+Build the CLI package shims:
+
+```bash
+bun run build:cli
 ```

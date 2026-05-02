@@ -84,6 +84,11 @@ runs:
       working-directory: ${{ github.action_path }}
       run: bun install --frozen-lockfile --production
 
+    - name: Build PatchSync action bundle
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: bun run build:action
+
     - name: Run PatchSync
       id: patchsync
       shell: bash
@@ -97,4 +102,4 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         PATCHSYNC_REPO_ROOT: ${{ github.workspace }}
         PATCHSYNC_ACTION_PATH: ${{ github.action_path }}
-      run: bun run "${PATCHSYNC_ACTION_PATH}/src/main.ts"
+      run: bun "${PATCHSYNC_ACTION_PATH}/packages/action/dist/main.js"

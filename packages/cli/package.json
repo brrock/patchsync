@@ -1,0 +1,14 @@
+{
+  "name": "@brrock/patchsync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "patchsync-local-prepare": "bin/patchsync-local-prepare",
+    "patchsync-local-capture": "bin/patchsync-local-capture",
+    "patchsync-local-verify": "bin/patchsync-local-verify"
+  },
+  "scripts": {
+    "build": "chmod +x bin/patchsync-local-prepare bin/patchsync-local-capture bin/patchsync-local-verify"
+  }
+}
