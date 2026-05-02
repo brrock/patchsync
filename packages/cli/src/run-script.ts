@@ -20,3 +20,15 @@ export async function runRepoScript(scriptName: string, args: string[]): Promise
     });
   });
 }
+
+export type LocalCommand = "prepare" | "capture" | "verify";
+
+const LOCAL_SCRIPT_BY_COMMAND: Record<LocalCommand, string> = {
+  prepare: "patchsync-local-prepare.sh",
+  capture: "patchsync-local-capture.sh",
+  verify: "patchsync-local-verify.sh",
+};
+
+export function getLocalScriptName(command: LocalCommand): string {
+  return LOCAL_SCRIPT_BY_COMMAND[command];
+}

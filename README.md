@@ -173,24 +173,20 @@ bun install
 bun run build:cli
 ```
 
-That gives you these commands:
+That gives you one CLI:
 
-- `patchsync-local-prepare`
-- `patchsync-local-capture`
-- `patchsync-local-verify`
+- `patchsync`
 
 From a repo clone, the built entrypoints are:
 
-- `packages/cli/dist/patchsync-local-prepare.js`
-- `packages/cli/dist/patchsync-local-capture.js`
-- `packages/cli/dist/patchsync-local-verify.js`
+- `packages/cli/dist/main.js`
 
 Example usage:
 
 ```bash
-patchsync-local-prepare [config] [patch_name]
-patchsync-local-capture <patch_name> [config]
-patchsync-local-verify [config]
+patchsync local prepare [config] [patch_name]
+patchsync local capture <patch_name> [config]
+patchsync local verify [config]
 ```
 
 The CLI wrappers dispatch to the bundled repo scripts, so the script workflow still works too.
@@ -206,19 +202,19 @@ chmod +x patchsync-local-prepare.sh patchsync-local-capture.sh patchsync-local-v
 
 For local patch authoring and repair work:
 
-- `patchsync-local-prepare [config] [patch_name]`
-- `patchsync-local-capture <patch_name> [config]`
-- `patchsync-local-verify [config]`
+- `patchsync local prepare [config] [patch_name]`
+- `patchsync local capture <patch_name> [config]`
+- `patchsync local verify [config]`
 - `scripts/patchsync-local-prepare.sh [config] [patch_name]`
 - `scripts/patchsync-local-capture.sh <patch_name> [config]`
 - `scripts/patchsync-local-verify.sh [config]`
 
 Typical flow for updating one patch:
 
-1. `patchsync-local-prepare patchsync.config.json patch_2`
+1. `patchsync local prepare patchsync.config.json patch_2`
 2. edit files under `.patchsync-local/target`
-3. `patchsync-local-capture patch_2 patchsync.config.json`
-4. `patchsync-local-verify patchsync.config.json`
+3. `patchsync local capture patch_2 patchsync.config.json`
+4. `patchsync local verify patchsync.config.json`
 
 ## Workflow
 
@@ -284,4 +280,4 @@ bun run build:cli
 Package layout:
 
 - `packages/action/src` -> `packages/action/dist/index.js`
-- `packages/cli/src` -> `packages/cli/dist/patchsync-local-*.js`
+- `packages/cli/src` -> `packages/cli/dist/main.js`

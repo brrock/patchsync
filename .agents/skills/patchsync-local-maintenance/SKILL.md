@@ -18,9 +18,9 @@ Use this skill for local patch authoring and validation in PatchSync repositorie
 
 Prefer these commands over ad hoc manual steps:
 
-- `patchsync-local-prepare [config] [patch_name]`
-- `patchsync-local-capture <patch_name> [config]`
-- `patchsync-local-verify [config]`
+- `patchsync local prepare [config] [patch_name]`
+- `patchsync local capture <patch_name> [config]`
+- `patchsync local verify [config]`
 
 Install the skill with:
 
@@ -40,13 +40,13 @@ The CLI wrappers dispatch to the repo scripts. If the built CLI is unavailable o
 Use them in this order unless the user asks for something narrower:
 
 1. Prepare the scratch tree:
-   - Full stack: `patchsync-local-prepare`
-   - Single patch workflow: `patchsync-local-prepare patchsync.config.json patch_2`
+   - Full stack: `patchsync local prepare`
+   - Single patch workflow: `patchsync local prepare patchsync.config.json patch_2`
 2. Edit files in `.patchsync-local/target`
 3. Regenerate the target patch:
-   - `patchsync-local-capture patch_2`
+   - `patchsync local capture patch_2`
 4. Verify locally:
-   - `patchsync-local-verify`
+   - `patchsync local verify`
 
 ## Working model
 
@@ -70,15 +70,15 @@ When doing local maintenance work:
 
 **Update one broken patch**
 
-1. Run `patchsync-local-prepare patchsync.config.json patch_2`
+1. Run `patchsync local prepare patchsync.config.json patch_2`
 2. Edit `.patchsync-local/target/...`
-3. Run `patchsync-local-capture patch_2 patchsync.config.json`
-4. Run `patchsync-local-verify patchsync.config.json`
+3. Run `patchsync local capture patch_2 patchsync.config.json`
+4. Run `patchsync local verify patchsync.config.json`
 
 **Create a new patch at the end of the stack**
 
-1. Run `patchsync-local-prepare`
+1. Run `patchsync local prepare`
 2. Edit `.patchsync-local/target/...`
-3. Run `patchsync-local-capture patch_3 patchsync.config.json`
+3. Run `patchsync local capture patch_3 patchsync.config.json`
 4. Add intent text to `patches/patch_3/patch.md`
-5. Run `patchsync-local-verify patchsync.config.json`
+5. Run `patchsync local verify patchsync.config.json`
