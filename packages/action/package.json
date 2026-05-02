@@ -1,7 +1,7 @@
 {
   "name": "@brrock/patchsync-action",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "scripts": {
     "dev": "bun run src/main.ts",
@@ -17,5 +17,8 @@
   "devDependencies": {
     "@types/bun": "^1.2.0",
     "typescript": "^5.7.0"
+  },
+  "bin": {
+    "patchsync-action": "dist/main.js"
   }
 }
