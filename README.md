@@ -1,4 +1,5 @@
 # PatchSync
+<img width="1536" height="1024" alt="patchsync-img" src="https://github.com/user-attachments/assets/bc4b2ff5-fb51-40d3-bbad-d168b80f3b05" />
 
 PatchSync is a GitHub Action for maintaining patch stacks against an upstream repository.
 
