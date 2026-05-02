@@ -79,10 +79,6 @@ runs:
       with:
         bun-version: "latest"
 
-    - name: Install published PatchSync action package
-      shell: bash
-      run: bun add --global @brrock/patchsync-action@latest
-
     - name: Run PatchSync
       id: patchsync
       shell: bash
@@ -96,4 +92,4 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         PATCHSYNC_REPO_ROOT: ${{ github.workspace }}
         PATCHSYNC_ACTION_PATH: ${{ github.action_path }}
-      run: patchsync-action
+      run: bunx --bun @brrock/patchsync-action@latest
