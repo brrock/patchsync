@@ -134,11 +134,11 @@ Patch directories are applied in lexicographic order. Root `patches/*.patch` fil
 Initialize the layout with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/init-patchsync.sh | bash -s -- .
+patchsync init .
 ```
 
 This also creates `.github/workflows/patchsync.yml` if it does not already exist.
-Set `PATCHSYNC_ACTION_REF` when running the script to change the generated `uses:` target.
+Set `PATCHSYNC_ACTION_REF` when running the CLI to change the generated `uses:` target.
 
 By default, clean upstream advances publish `LATEST_SUPPORTED_COMMIT` directly to the repository default branch, while repaired patch stacks open a PR. Set `pullRequest.cleanUpdates` to `pull_request` or `disabled` if you want different behavior for clean runs.
 
@@ -157,30 +157,52 @@ Verification runs in this order:
 Install the local maintenance skill from this repo with:
 
 ```bash
-bunx skills add brrock/patchsync
+bunx skills add brrock/path-sync
 ```
 
-Fetch the helper scripts directly if you want them without cloning first:
+Install the local CLI package from npm with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-prepare.sh -o patchsync-local-prepare.sh
-curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-capture.sh -o patchsync-local-capture.sh
-curl -fsSL https://raw.githubusercontent.com/brrock/patchsync/main/scripts/patchsync-local-verify.sh -o patchsync-local-verify.sh
-chmod +x patchsync-local-prepare.sh patchsync-local-capture.sh patchsync-local-verify.sh
+bun add -g @brrock/patchsync
+```
+
+If you are working from a clone of this repo instead:
+
+```bash
+bun install
+bun run build:cli
+```
+
+That gives you one CLI:
+
+- `patchsync`
+
+From a repo clone, the built entrypoints are:
+
+- `packages/cli/dist/main.js`
+
+Example usage:
+
+```bash
+patchsync init .
+patchsync prepare [config] [patch_name]
+patchsync capture <patch_name> [config]
+patchsync verify [config]
 ```
 
 For local patch authoring and repair work:
 
-- `scripts/patchsync-local-prepare.sh [config] [patch_name]`
-- `scripts/patchsync-local-capture.sh <patch_name> [config]`
-- `scripts/patchsync-local-verify.sh [config]`
+- `patchsync init [root]`
+- `patchsync prepare [config] [patch_name]`
+- `patchsync capture <patch_name> [config]`
+- `patchsync verify [config]`
 
 Typical flow for updating one patch:
 
-1. `scripts/patchsync-local-prepare.sh patchsync.config.json patch_2`
+1. `patchsync prepare patchsync.config.json patch_2`
 2. edit files under `.patchsync-local/target`
-3. `scripts/patchsync-local-capture.sh patch_2 patchsync.config.json`
-4. `scripts/patchsync-local-verify.sh patchsync.config.json`
+3. `patchsync capture patch_2 patchsync.config.json`
+4. `patchsync verify patchsync.config.json`
 
 ## Workflow
 
@@ -221,3 +243,29 @@ jobs:
           name: patchsync-artifacts
           path: ${{ steps.patchsync.outputs.artifact-paths }}
 ```
+
+
+## Development
+
+Build everything:
+
+```bash
+bun run build
+```
+
+Build only the action bundle (minified):
+
+```bash
+bun run build:action
+```
+
+Build the CLI package shims:
+
+```bash
+bun run build:cli
+```
+
+Package layout:
+
+- `packages/action/src` -> `packages/action/dist/index.js`
+- `packages/cli/src` -> `packages/cli/dist/main.js`
