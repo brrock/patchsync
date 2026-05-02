@@ -1,14 +1,6 @@
 # PatchSync
 <img width="1536" height="1024" alt="patchsync-img" src="https://github.com/user-attachments/assets/bc4b2ff5-fb51-40d3-bbad-d168b80f3b05" />
 
-PatchSync is a Bun monorepo with two packages:
-
-- `@brrock/patchsync-action`: the GitHub Action implementation
-- `@brrock/patchsync`: TypeScript CLI tools for local patch-maintenance workflows
-
-The action package is bundled and minified with Bun (`bun build --minify`) before execution.
-The CLI package builds Bun-powered TypeScript executables that invoke local maintenance flows.
-
 PatchSync is a GitHub Action for maintaining patch stacks against an upstream repository.
 
 It deterministically clones upstream, applies ordered patch directories, runs verification, and records the latest verified upstream commit in `LATEST_SUPPORTED_COMMIT`. If the stack no longer applies or fails verification, PatchSync can delegate repair to an ACPX coding agent configured in `patchsync.config.json`, regenerate patch files, verify from a clean clone, and open a pull request.
@@ -165,9 +157,43 @@ Verification runs in this order:
 Install the local maintenance skill from this repo with:
 
 ```bash
-bunx skills add @brrock/patchsync-action
-bunx skills add @brrock/patchsync
+bunx skills add brrock/path-sync
 ```
+
+Install the local CLI package from npm with:
+
+```bash
+bun add -g @brrock/patchsync
+```
+
+If you are working from a clone of this repo instead:
+
+```bash
+bun install
+bun run build:cli
+```
+
+That gives you these commands:
+
+- `patchsync-local-prepare`
+- `patchsync-local-capture`
+- `patchsync-local-verify`
+
+From a repo clone, the built entrypoints are:
+
+- `packages/cli/dist/patchsync-local-prepare.js`
+- `packages/cli/dist/patchsync-local-capture.js`
+- `packages/cli/dist/patchsync-local-verify.js`
+
+Example usage:
+
+```bash
+patchsync-local-prepare [config] [patch_name]
+patchsync-local-capture <patch_name> [config]
+patchsync-local-verify [config]
+```
+
+The CLI wrappers dispatch to the bundled repo scripts, so the script workflow still works too.
 
 Fetch the helper scripts directly if you want them without cloning first:
 
@@ -180,16 +206,19 @@ chmod +x patchsync-local-prepare.sh patchsync-local-capture.sh patchsync-local-v
 
 For local patch authoring and repair work:
 
+- `patchsync-local-prepare [config] [patch_name]`
+- `patchsync-local-capture <patch_name> [config]`
+- `patchsync-local-verify [config]`
 - `scripts/patchsync-local-prepare.sh [config] [patch_name]`
 - `scripts/patchsync-local-capture.sh <patch_name> [config]`
 - `scripts/patchsync-local-verify.sh [config]`
 
 Typical flow for updating one patch:
 
-1. `scripts/patchsync-local-prepare.sh patchsync.config.json patch_2`
+1. `patchsync-local-prepare patchsync.config.json patch_2`
 2. edit files under `.patchsync-local/target`
-3. `scripts/patchsync-local-capture.sh patch_2 patchsync.config.json`
-4. `scripts/patchsync-local-verify.sh patchsync.config.json`
+3. `patchsync-local-capture patch_2 patchsync.config.json`
+4. `patchsync-local-verify patchsync.config.json`
 
 ## Workflow
 
@@ -232,7 +261,7 @@ jobs:
 ```
 
 
-## Monorepo Development
+## Development
 
 Build everything:
 
@@ -251,3 +280,8 @@ Build the CLI package shims:
 ```bash
 bun run build:cli
 ```
+
+Package layout:
+
+- `packages/action/src` -> `packages/action/dist/index.js`
+- `packages/cli/src` -> `packages/cli/dist/patchsync-local-*.js`

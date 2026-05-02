@@ -1,9 +1,9 @@
 ---
-name: patchsync-local-maintenance
-description: Use this skill whenever the user wants to create, update, regenerate, test, or debug PatchSync patch stacks locally. This includes preparing a scratch upstream worktree, updating a specific `patches/patch_*` directory, regenerating `patch.patch`, or running local end-to-end PatchSync verification before pushing.
+name: patchsync-patch-workflows
+description: Use this skill whenever the user wants to prepare, repair, regenerate, or verify a PatchSync patch stack locally. Prefer the repo's TypeScript CLI entrypoints first, fall back to the shell scripts when the built CLI is unavailable, and keep the work focused on patch directories plus `LATEST_SUPPORTED_COMMIT`.
 ---
 
-# PatchSync Local Maintenance
+# PatchSync Patch Workflows
 
 Use this skill for local patch authoring and validation in PatchSync repositories.
 
@@ -14,9 +14,24 @@ Use this skill for local patch authoring and validation in PatchSync repositorie
 - Regenerate a patch directory from the current scratch-tree diff
 - Re-run PatchSync locally in `check` mode before pushing
 
-## Use the bundled repo scripts
+## Prefer the local CLI
 
-Prefer these scripts over ad hoc manual steps:
+Prefer these commands over ad hoc manual steps:
+
+- `patchsync-local-prepare [config] [patch_name]`
+- `patchsync-local-capture <patch_name> [config]`
+- `patchsync-local-verify [config]`
+
+Install the skill with:
+
+- `bunx skills add brrock/path-sync`
+
+Build them first if `packages/cli/dist` does not exist:
+
+- `bun install`
+- `bun run build:cli`
+
+The CLI wrappers dispatch to the repo scripts. If the built CLI is unavailable or the user explicitly wants the scripts, use:
 
 - `scripts/patchsync-local-prepare.sh [config] [patch_name]`
 - `scripts/patchsync-local-capture.sh <patch_name> [config]`
@@ -25,13 +40,13 @@ Prefer these scripts over ad hoc manual steps:
 Use them in this order unless the user asks for something narrower:
 
 1. Prepare the scratch tree:
-   - Full stack: `scripts/patchsync-local-prepare.sh`
-   - Single patch workflow: `scripts/patchsync-local-prepare.sh patchsync.config.json patch_2`
+   - Full stack: `patchsync-local-prepare`
+   - Single patch workflow: `patchsync-local-prepare patchsync.config.json patch_2`
 2. Edit files in `.patchsync-local/target`
 3. Regenerate the target patch:
-   - `scripts/patchsync-local-capture.sh patch_2`
+   - `patchsync-local-capture patch_2`
 4. Verify locally:
-   - `scripts/patchsync-local-verify.sh`
+   - `patchsync-local-verify`
 
 ## Working model
 
@@ -47,6 +62,7 @@ When doing local maintenance work:
   - `patches/**`
   - `LATEST_SUPPORTED_COMMIT`
   - `patchsync.config.json` or repo-specific config file
+- If the user asks to update the tooling itself, edit `packages/cli/**` or `scripts/**` deliberately. Do not conflate tool changes with patch-stack maintenance.
 - Do not hand-edit `.patchsync-local/target` expecting it to be committed directly
 - Treat `.patchsync-local/target` as disposable working state
 
@@ -54,15 +70,15 @@ When doing local maintenance work:
 
 **Update one broken patch**
 
-1. Run `scripts/patchsync-local-prepare.sh patchsync.config.json patch_2`
+1. Run `patchsync-local-prepare patchsync.config.json patch_2`
 2. Edit `.patchsync-local/target/...`
-3. Run `scripts/patchsync-local-capture.sh patch_2 patchsync.config.json`
-4. Run `scripts/patchsync-local-verify.sh patchsync.config.json`
+3. Run `patchsync-local-capture patch_2 patchsync.config.json`
+4. Run `patchsync-local-verify patchsync.config.json`
 
 **Create a new patch at the end of the stack**
 
-1. Run `scripts/patchsync-local-prepare.sh`
+1. Run `patchsync-local-prepare`
 2. Edit `.patchsync-local/target/...`
-3. Run `scripts/patchsync-local-capture.sh patch_3 patchsync.config.json`
+3. Run `patchsync-local-capture patch_3 patchsync.config.json`
 4. Add intent text to `patches/patch_3/patch.md`
-5. Run `scripts/patchsync-local-verify.sh patchsync.config.json`
+5. Run `patchsync-local-verify patchsync.config.json`
