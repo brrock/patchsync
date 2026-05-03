@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import * as core from "@actions/core";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";

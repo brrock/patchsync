@@ -87,9 +87,10 @@ runs:
         echo "[patchsync-debug] bun version: $(bun --version)"
         echo "[patchsync-debug] global bin before install: $(bun pm bin -g)"
         bun install -g @brrock/patchsync-action@latest
-        echo "[patchsync-debug] patchsync-action path: $(command -v patchsync-action)"
+        PATCHSYNC_ACTION_BIN="$(command -v patchsync-action)"
+        echo "[patchsync-debug] patchsync-action path: ${PATCHSYNC_ACTION_BIN}"
         echo "[patchsync-debug] patchsync-action version:"
-        patchsync-action --version || true
+        bun "${PATCHSYNC_ACTION_BIN}" --version || true
 
     - name: Run PatchSync
       id: patchsync
@@ -107,5 +108,6 @@ runs:
       run: |
         set -euo pipefail
         export PATH="$HOME/.bun/bin:$PATH"
-        echo "[patchsync-debug] running patchsync-action from: $(command -v patchsync-action)"
-        patchsync-action
+        PATCHSYNC_ACTION_BIN="$(command -v patchsync-action)"
+        echo "[patchsync-debug] running patchsync-action from: ${PATCHSYNC_ACTION_BIN}"
+        bun "${PATCHSYNC_ACTION_BIN}"

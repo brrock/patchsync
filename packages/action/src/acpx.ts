@@ -124,7 +124,7 @@ Verification:
 
   const effectiveMode = await resolveEffectiveAgentMode(options);
   const modelId = resolveAgentModel(options.config);
-  const acpxExecutable = await resolveAcpxExecutable(options);
+  const acpxScriptPath = await resolveAcpxScriptPath(options);
 
   const args =
     effectiveMode === "exec"
@@ -132,11 +132,12 @@ Verification:
       : [...globalArgs, options.config.agent.provider, prompt];
 
   core.info(
-    `Running ACPX repair via ${acpxExecutable} with provider=${options.config.agent.provider} mode=${effectiveMode}`,
+    `Running ACPX repair via bun ${acpxScriptPath} with provider=${options.config.agent.provider} mode=${effectiveMode}`,
   );
   const result = await runCommandArgs({
     argv: [
-      acpxExecutable,
+      "bun",
+      acpxScriptPath,
       "--format",
       "json",
       "--json-strict",
@@ -232,17 +233,14 @@ async function ensureSessionConfigured(options: {
   logger: PatchSyncLogger;
 }) {
   const globalArgs = buildGlobalArgs(options.config);
-  const acpxExecutable = await resolveAcpxExecutable({
+  const acpxScriptPath = await resolveAcpxScriptPath({
     config: options.config,
     repoRoot: options.targetDir,
     logger: options.logger,
   });
-  const prefix = [
-    acpxExecutable,
-    ...globalArgs,
-  ];
+  const prefix = ["bun", acpxScriptPath, ...globalArgs];
 
-  core.info(`Ensuring ACPX session via ${acpxExecutable}`);
+  core.info(`Ensuring ACPX session via bun ${acpxScriptPath}`);
   const ensureSession = await runCommandArgs({
     argv: [...prefix, options.config.agent.provider, "sessions", "ensure"],
     cwd: options.targetDir,
@@ -324,23 +322,31 @@ async function ensureAcpxInstalled(options: {
     throw new Error(`ACPX install failed with exit code ${installResult.code}`);
   }
 
-  const executable = await resolveAcpxExecutable(options);
+  const scriptPath = await resolveAcpxScriptPath(options);
   return {
     ...summary,
-    executable,
+    scriptPath,
   };
 }
 
-async function resolveAcpxExecutable(options: {
+async function resolveAcpxScriptPath(options: {
   config: PatchSyncConfig;
   repoRoot: string;
   logger: PatchSyncLogger;
 }) {
-  const candidates = ["acpx", join(homedir(), ".bun", "bin", "acpx")];
+  const commandPath = await runCommand({
+    command: "command -v acpx || true",
+    cwd: options.repoRoot,
+    env: process.env,
+  });
+  const candidates = [
+    commandPath.stdout.trim(),
+    join(homedir(), ".bun", "bin", "acpx"),
+  ].filter(Boolean);
 
   for (const candidate of candidates) {
     const probe = await runCommandArgs({
-      argv: [candidate, "--version"],
+      argv: ["bun", candidate, "--version"],
       cwd: options.repoRoot,
       env: process.env,
     }).catch((error) => ({
@@ -351,7 +357,7 @@ async function resolveAcpxExecutable(options: {
     }));
 
     core.info(
-      `ACPX probe ${candidate}: ${JSON.stringify({ ok: probe.ok, code: probe.code })}`,
+      `ACPX probe bun ${candidate}: ${JSON.stringify({ ok: probe.ok, code: probe.code })}`,
     );
     if (probe.stdout.trim()) {
       core.info(`ACPX probe stdout:\n${truncate(probe.stdout, 1000)}`);
@@ -366,7 +372,7 @@ async function resolveAcpxExecutable(options: {
   }
 
   throw new Error(
-    `ACPX executable not found after global install. Tried: ${candidates.join(", ")}`,
+    `ACPX script not runnable after global install. Tried: ${candidates.join(", ")}`,
   );
 }
 
