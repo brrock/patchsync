@@ -120,13 +120,13 @@ For `every_upstream_release`, `prereleaseSource` can be:
 patches/
   verification.sh
   patch.md
-  patch_1/
+  01-base-port/
     patch.md
     verification.sh
-    change.patch
-  patch_2/
+    0001-change.patch
+  02-fix-build/
     patch.md
-    fix.patch
+    0001-fix.patch
 ```
 
 Patch directories are applied in lexicographic order. Root `patches/*.patch` files are supported, but the preferred format is one directory per patch.
@@ -185,6 +185,7 @@ Example usage:
 
 ```bash
 patchsync init .
+patchsync order [config]
 patchsync prepare [config] [patch_name]
 patchsync capture <patch_name> [config]
 patchsync verify [config]
@@ -193,16 +194,77 @@ patchsync verify [config]
 For local patch authoring and repair work:
 
 - `patchsync init [root]`
+- `patchsync order [config]`
 - `patchsync prepare [config] [patch_name]`
+- `patchsync prepare [patch_name]`
+- `patchsync prepare [patch_order_number]`
 - `patchsync capture <patch_name> [config]`
 - `patchsync verify [config]`
 
+Use numeric prefixes in patch directory names so the apply order is obvious at a glance:
+
+```text
+patches/
+  01-base-port/
+  02-fix-build/
+  03-add-feature-flag/
+```
+
+PatchSync applies:
+
+1. root `patches/*.patch` files, sorted lexicographically
+2. patch directories, sorted lexicographically
+3. patch files within each directory, sorted lexicographically
+
+Those entries are applied cumulatively on top of each other:
+
+1. start from clean upstream
+2. apply entry 1
+3. apply entry 2 on top of the result of entry 1
+4. apply entry 3 on top of the result of entry 2
+5. continue until the stack is complete
+
+Show the exact order the CLI will apply with:
+
+```bash
+patchsync order patchsync.config.json
+```
+
+`patchsync order` determines this dynamically by scanning the current `patches/` directory and sorting what it finds.
+
 Typical flow for updating one patch:
 
-1. `patchsync prepare patchsync.config.json patch_2`
-2. edit files under `.patchsync-local/target`
-3. `patchsync capture patch_2 patchsync.config.json`
-4. `patchsync verify patchsync.config.json`
+1. `patchsync order patchsync.config.json`
+2. `patchsync prepare 02-fix-build`
+3. edit files under `.patchsync-local/target`
+4. `patchsync capture 02-fix-build patchsync.config.json`
+5. `patchsync verify patchsync.config.json`
+
+Typical flow for creating a new patch at the end of the stack:
+
+1. `patchsync order patchsync.config.json`
+2. choose the next numeric prefix, for example `03-add-feature-flag`
+3. `patchsync prepare`
+4. edit files under `.patchsync-local/target`
+5. `patchsync capture 03-add-feature-flag patchsync.config.json`
+6. update `patches/03-add-feature-flag/patch.md`
+7. `patchsync verify patchsync.config.json`
+
+When updating an existing patch, `prepare` stops before that patch and applies every earlier patch in lexicographic order. For example:
+
+```bash
+patchsync prepare 02-fix-build
+```
+
+That prepares upstream plus `01-*` patches, but not `02-fix-build` or anything after it. This keeps the captured diff scoped to the target patch.
+
+You can also select the target patch by the order number shown by `patchsync order`:
+
+```bash
+patchsync prepare 2
+```
+
+That means "prepare everything before entry 2 in the current dynamic order".
 
 ## Workflow
 

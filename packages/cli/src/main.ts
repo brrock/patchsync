@@ -1,6 +1,6 @@
 import { runLocalCommand, type LocalCommand } from "./run-command";
 
-const LOCAL_COMMANDS: LocalCommand[] = ["init", "prepare", "capture", "verify"];
+const LOCAL_COMMANDS: LocalCommand[] = ["init", "order", "prepare", "capture", "verify"];
 
 function printHelp(): void {
   console.error(`PatchSync CLI
@@ -10,14 +10,20 @@ Usage:
 
 Commands:
   init [root]
+  order [config]
   prepare [config] [patch_name]
+  prepare [patch_name]
+  prepare [patch_order_number]
   capture <patch_name> [config]
   verify [config]
 
 Examples:
   patchsync init .
-  patchsync prepare patchsync.config.json patch_2
-  patchsync capture patch_2 patchsync.config.json
+  patchsync order patchsync.config.json
+  patchsync prepare 02-fix-build
+  patchsync prepare 2
+  patchsync prepare patchsync.config.json 02-fix-build
+  patchsync capture 02-fix-build patchsync.config.json
   patchsync verify patchsync.config.json
 `);
 }

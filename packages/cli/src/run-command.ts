@@ -5,7 +5,7 @@ import { loadConfig } from "@brrock/patchsync-action/src/config";
 import { listPatchEntries } from "@brrock/patchsync-action/src/patches";
 import { runCommandArgs } from "@brrock/patchsync-action/src/shell";
 
-export type LocalCommand = "init" | "prepare" | "capture" | "verify";
+export type LocalCommand = "init" | "order" | "prepare" | "capture" | "verify";
 
 const DEFAULT_CONFIG_PATH = "patchsync.config.json";
 const DEFAULT_SCRATCH_DIR_NAME = ".patchsync-local";
@@ -17,6 +17,11 @@ type CommandContext = {
   configPath: string;
   scratchDir: string;
   targetDir: string;
+};
+
+type PrepareArgs = {
+  configArg: string;
+  targetSelector?: string;
 };
 
 function getCommandContext(configPath = DEFAULT_CONFIG_PATH): CommandContext {
@@ -31,6 +36,59 @@ function getCommandContext(configPath = DEFAULT_CONFIG_PATH): CommandContext {
     scratchDir,
     targetDir: join(scratchDir, TARGET_DIR_NAME),
   };
+}
+
+function looksLikeConfigPath(value: string): boolean {
+  return value.endsWith(".json");
+}
+
+function parsePrepareArgs(args: string[]): PrepareArgs {
+  const [first, second] = args;
+
+  if (!first) {
+    return { configArg: DEFAULT_CONFIG_PATH };
+  }
+
+  if (!second) {
+    return looksLikeConfigPath(first)
+      ? { configArg: first }
+      : { configArg: DEFAULT_CONFIG_PATH, targetSelector: first };
+  }
+
+  if (looksLikeConfigPath(first) && !looksLikeConfigPath(second)) {
+    return { configArg: first, targetSelector: second };
+  }
+
+  if (!looksLikeConfigPath(first) && looksLikeConfigPath(second)) {
+    return { configArg: second, targetSelector: first };
+  }
+
+  return { configArg: first, targetSelector: second };
+}
+
+function resolveTargetEntryIndex(
+  patchEntries: Awaited<ReturnType<typeof listPatchEntries>>,
+  targetSelector: string,
+): number {
+  if (/^\d+$/.test(targetSelector)) {
+    const oneBasedIndex = Number.parseInt(targetSelector, 10);
+    if (oneBasedIndex < 1 || oneBasedIndex > patchEntries.length) {
+      throw new Error(
+        `Patch order index ${targetSelector} is out of range. Run patchsync order to inspect the current stack.`,
+      );
+    }
+
+    return oneBasedIndex - 1;
+  }
+
+  const entryIndex = patchEntries.findIndex((entry) => entry.name === targetSelector);
+  if (entryIndex === -1) {
+    throw new Error(
+      `Patch ${targetSelector} was not found. Run patchsync order to inspect the current stack.`,
+    );
+  }
+
+  return entryIndex;
 }
 
 async function ensureExists(path: string, message: string) {
@@ -68,7 +126,7 @@ async function applyPatchFile(targetDir: string, patchFile: string, repoRoot: st
 }
 
 export async function runPrepare(args: string[]): Promise<number> {
-  const [configArg = DEFAULT_CONFIG_PATH, targetPatch] = args;
+  const { configArg, targetSelector } = parsePrepareArgs(args);
   const context = getCommandContext(configArg);
   const config = await loadConfig({
     path: context.configPath,
@@ -76,6 +134,16 @@ export async function runPrepare(args: string[]): Promise<number> {
   });
   const patchDir = resolve(context.repoRoot, config.patches.dir);
   const patchEntries = await listPatchEntries(patchDir);
+  let targetEntryIndex: number | null = null;
+  if (targetSelector !== undefined) {
+    try {
+      targetEntryIndex = resolveTargetEntryIndex(patchEntries, targetSelector);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return 1;
+    }
+  }
+  const targetEntry = targetEntryIndex !== null ? patchEntries[targetEntryIndex] : null;
 
   await mkdir(context.scratchDir, { recursive: true });
   await cloneTargetRepo({
@@ -84,11 +152,13 @@ export async function runPrepare(args: string[]): Promise<number> {
     dir: context.targetDir,
   });
 
-  for (const entry of patchEntries) {
-    if (targetPatch && entry.name === targetPatch) {
-      console.log(`Prepared ${context.targetDir} through patches before ${targetPatch}.`);
+  for (const [entryIndex, entry] of patchEntries.entries()) {
+    if (targetEntryIndex !== null && entryIndex === targetEntryIndex) {
       console.log(
-        `Edit files in ${context.targetDir}, then run patchsync capture ${targetPatch} ${context.configPath}`,
+        `Prepared ${context.targetDir} through patches before ${targetEntry?.name} (${entryIndex + 1}/${patchEntries.length}).`,
+      );
+      console.log(
+        `Edit files in ${context.targetDir}, then run patchsync capture ${targetEntry?.name} ${context.configPath}`,
       );
       return 0;
     }
@@ -98,11 +168,6 @@ export async function runPrepare(args: string[]): Promise<number> {
     }
   }
 
-  if (targetPatch) {
-    console.error(`Patch directory ${targetPatch} was not found under ${config.patches.dir}.`);
-    return 1;
-  }
-
   console.log(`Prepared ${context.targetDir} with the full patch stack applied.`);
   console.log(
     `Edit files in ${context.targetDir}, then run patchsync capture <patch_name> ${context.configPath}`,
@@ -110,11 +175,55 @@ export async function runPrepare(args: string[]): Promise<number> {
   return 0;
 }
 
+export async function runOrder(args: string[]): Promise<number> {
+  const [configArg = DEFAULT_CONFIG_PATH] = args;
+  const context = getCommandContext(configArg);
+  const config = await loadConfig({
+    path: context.configPath,
+    repoRoot: context.repoRoot,
+  });
+  const patchDir = resolve(context.repoRoot, config.patches.dir);
+  const patchEntries = await listPatchEntries(patchDir);
+
+  console.log(`Patch application order for ${relative(context.repoRoot, patchDir) || "."}:`);
+  console.log("PatchSync decides this dynamically by scanning the patch directory and sorting what it finds.");
+  console.log("");
+
+  if (patchEntries.length === 0) {
+    console.log("  (no patch files found)");
+    return 0;
+  }
+
+  let index = 1;
+  for (const entry of patchEntries) {
+    const baseLabel = index === 1 ? "clean upstream" : patchEntries[index - 2]?.name ?? "clean upstream";
+    const label =
+      entry.name === "root"
+        ? `${index}. root patch files`
+        : `${index}. ${entry.name}`;
+    console.log(label);
+    console.log(`   applies on top of: ${baseLabel}`);
+
+    for (const patchFile of entry.patchFiles) {
+      console.log(`   - ${relative(context.repoRoot, patchFile)}`);
+    }
+
+    index += 1;
+  }
+
+  console.log("");
+  console.log("PatchSync applies entries in lexicographic order.");
+  console.log("Each entry is applied on top of the result of every entry before it.");
+  console.log("Use numeric prefixes like 01-name, 02-name, 03-name to make the order obvious.");
+  console.log("You can prepare up to a patch with either its name or its order number, for example: patchsync prepare 02-name or patchsync prepare 2");
+  return 0;
+}
+
 export async function runInit(args: string[]): Promise<number> {
   const [rootArg = "."] = args;
   const rootDir = resolve(process.cwd(), rootArg);
   const patchDir = join(rootDir, "patches");
-  const patchOneDir = join(patchDir, "patch_1");
+  const patchOneDir = join(patchDir, "01-initial-patch");
   const configPath = join(rootDir, "patchsync.config.json");
   const latestSupportedCommitPath = join(rootDir, "LATEST_SUPPORTED_COMMIT");
   const workflowDir = join(rootDir, ".github", "workflows");
@@ -202,7 +311,7 @@ export async function runInit(args: string[]): Promise<number> {
   );
   await writeFileIfMissing(
     join(patchOneDir, "patch.md"),
-    "# patch_1\n\nDescribe the intent of this patch here.\n",
+    "# 01-initial-patch\n\nDescribe the intent of this patch here.\n",
   );
   await writeFileIfMissing(
     join(patchOneDir, "verification.sh"),
@@ -354,6 +463,8 @@ export async function runLocalCommand(
   switch (command) {
     case "init":
       return runInit(args);
+    case "order":
+      return runOrder(args);
     case "prepare":
       return runPrepare(args);
     case "capture":
