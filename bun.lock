@@ -4,6 +4,16 @@
   "workspaces": {
     "": {
       "name": "patchsync",
+      "devDependencies": {
+        "prettier": "^3.4.2",
+      },
+    },
+    "packages/action": {
+      "name": "@brrock/patchsync-action",
+      "version": "0.1.1",
+      "bin": {
+        "patchsync-action": "dist/main.js",
+      },
       "dependencies": {
         "@actions/core": "^1.11.1",
         "@actions/github": "^6.0.1",
@@ -12,8 +22,14 @@
       },
       "devDependencies": {
         "@types/bun": "^1.2.0",
-        "prettier": "^3.4.2",
         "typescript": "^5.7.0",
+      },
+    },
+    "packages/cli": {
+      "name": "@brrock/patchsync",
+      "version": "0.1.0",
+      "bin": {
+        "patchsync": "dist/main.js",
       },
     },
   },
@@ -27,6 +43,10 @@
     "@actions/http-client": ["@actions/http-client@2.2.3", "", { "dependencies": { "tunnel": "^0.0.6", "undici": "^5.25.4" } }, "sha512-mx8hyJi/hjFvbPokCg4uRd4ZX78t+YyRPtnKWwIl+RzNaVuFpQHfmlGVfsKEJN8LwTCvL+DfVgAM04XaHkm6bA=="],
 
     "@actions/io": ["@actions/io@1.1.3", "", {}, "sha512-wi9JjgKLYS7U/z8PPbco+PvTb/nRWjeoFlJ1Qer83k/3C5PHQi28hiVdeE2kHXmIL99mQFawx8qt/JPjZilJ8Q=="],
+
+    "@brrock/patchsync": ["@brrock/patchsync@workspace:packages/cli"],
+
+    "@brrock/patchsync-action": ["@brrock/patchsync-action@workspace:packages/action"],
 
     "@fastify/busboy": ["@fastify/busboy@2.1.1", "", {}, "sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA=="],
 

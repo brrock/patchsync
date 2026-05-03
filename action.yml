@@ -79,6 +79,18 @@ runs:
       with:
         bun-version: "latest"
 
+    - name: Install PatchSync action package
+      shell: bash
+      run: |
+        set -euo pipefail
+        export PATH="$HOME/.bun/bin:$PATH"
+        echo "[patchsync-debug] bun version: $(bun --version)"
+        echo "[patchsync-debug] global bin before install: $(bun pm bin -g)"
+        bun install -g @brrock/patchsync-action@latest
+        echo "[patchsync-debug] patchsync-action path: $(command -v patchsync-action)"
+        echo "[patchsync-debug] patchsync-action version:"
+        patchsync-action --version || true
+
     - name: Run PatchSync
       id: patchsync
       shell: bash
@@ -92,4 +104,8 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         PATCHSYNC_REPO_ROOT: ${{ github.workspace }}
         PATCHSYNC_ACTION_PATH: ${{ github.action_path }}
-      run: bunx --bun @brrock/patchsync-action@latest
+      run: |
+        set -euo pipefail
+        export PATH="$HOME/.bun/bin:$PATH"
+        echo "[patchsync-debug] running patchsync-action from: $(command -v patchsync-action)"
+        patchsync-action

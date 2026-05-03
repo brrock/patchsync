@@ -71,6 +71,9 @@ export async function installCodingAgent(options: {
       `Coding agent install failed with exit code ${result.code}`,
     );
   }
+
+  const acpxInstall = await ensureAcpxInstalled(options);
+  options.logger.appendSummary("ACPX Install", acpxInstall);
 }
 
 export async function runAcpxRepair(options: {
@@ -121,16 +124,19 @@ Verification:
 
   const effectiveMode = await resolveEffectiveAgentMode(options);
   const modelId = resolveAgentModel(options.config);
+  const acpxExecutable = await resolveAcpxExecutable(options);
 
   const args =
     effectiveMode === "exec"
       ? [...globalArgs, options.config.agent.provider, "exec", prompt]
       : [...globalArgs, options.config.agent.provider, prompt];
 
+  core.info(
+    `Running ACPX repair via ${acpxExecutable} with provider=${options.config.agent.provider} mode=${effectiveMode}`,
+  );
   const result = await runCommandArgs({
     argv: [
-      "bunx",
-      `acpx@${options.config.agent.acpxVersion}`,
+      acpxExecutable,
       "--format",
       "json",
       "--json-strict",
@@ -223,14 +229,20 @@ function buildGlobalArgs(config: PatchSyncConfig) {
 async function ensureSessionConfigured(options: {
   config: PatchSyncConfig;
   targetDir: string;
+  logger: PatchSyncLogger;
 }) {
   const globalArgs = buildGlobalArgs(options.config);
+  const acpxExecutable = await resolveAcpxExecutable({
+    config: options.config,
+    repoRoot: options.targetDir,
+    logger: options.logger,
+  });
   const prefix = [
-    "bunx",
-    `acpx@${options.config.agent.acpxVersion}`,
+    acpxExecutable,
     ...globalArgs,
   ];
 
+  core.info(`Ensuring ACPX session via ${acpxExecutable}`);
   const ensureSession = await runCommandArgs({
     argv: [...prefix, options.config.agent.provider, "sessions", "ensure"],
     cwd: options.targetDir,
@@ -255,6 +267,7 @@ async function resolveEffectiveAgentMode(options: {
     await ensureSessionConfigured({
       config: options.config,
       targetDir: options.targetDir,
+      logger: options.logger,
     });
     return "session" as const;
   } catch (error) {
@@ -269,6 +282,92 @@ async function resolveEffectiveAgentMode(options: {
     );
     return "exec" as const;
   }
+}
+
+async function ensureAcpxInstalled(options: {
+  config: PatchSyncConfig;
+  repoRoot: string;
+  logger: PatchSyncLogger;
+}) {
+  const command = `bun install -g acpx@${options.config.agent.acpxVersion}`;
+  core.info(`Installing ACPX globally: ${command}`);
+  const installResult = await runCommand({
+    command,
+    cwd: options.repoRoot,
+    env: process.env,
+    timeoutMs: options.config.agent.timeoutMinutes * 60_000,
+  });
+
+  const whichResult = await runCommand({
+    command: "command -v acpx || true",
+    cwd: options.repoRoot,
+    env: process.env,
+  });
+
+  const summary = {
+    command,
+    exitCode: installResult.code,
+    ok: installResult.ok,
+    resolvedPath: whichResult.stdout.trim() || null,
+  };
+  core.info(`ACPX install: ${JSON.stringify(summary)}`);
+  if (installResult.stdout.trim()) {
+    core.info(`ACPX install stdout:\n${truncate(installResult.stdout, 4000)}`);
+  }
+  if (installResult.stderr.trim()) {
+    core.warning(
+      `ACPX install stderr:\n${truncate(installResult.stderr, 4000)}`,
+    );
+  }
+
+  if (!installResult.ok) {
+    throw new Error(`ACPX install failed with exit code ${installResult.code}`);
+  }
+
+  const executable = await resolveAcpxExecutable(options);
+  return {
+    ...summary,
+    executable,
+  };
+}
+
+async function resolveAcpxExecutable(options: {
+  config: PatchSyncConfig;
+  repoRoot: string;
+  logger: PatchSyncLogger;
+}) {
+  const candidates = ["acpx", join(homedir(), ".bun", "bin", "acpx")];
+
+  for (const candidate of candidates) {
+    const probe = await runCommandArgs({
+      argv: [candidate, "--version"],
+      cwd: options.repoRoot,
+      env: process.env,
+    }).catch((error) => ({
+      ok: false,
+      code: 1,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error),
+    }));
+
+    core.info(
+      `ACPX probe ${candidate}: ${JSON.stringify({ ok: probe.ok, code: probe.code })}`,
+    );
+    if (probe.stdout.trim()) {
+      core.info(`ACPX probe stdout:\n${truncate(probe.stdout, 1000)}`);
+    }
+    if (probe.stderr.trim()) {
+      core.warning(`ACPX probe stderr:\n${truncate(probe.stderr, 1000)}`);
+    }
+
+    if (probe.ok) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    `ACPX executable not found after global install. Tried: ${candidates.join(", ")}`,
+  );
 }
 
 function emitAcpxLogLines(summary: AcpxRunSummary, stderr: string) {
