@@ -38,12 +38,23 @@ const repoRoot = resolve(process.env.PATCHSYNC_REPO_ROOT ?? process.cwd());
 
 async function main() {
   const configPath = process.env.INPUT_CONFIG || "patchsync.config.json";
+  const resolvedConfigPath = resolve(repoRoot, configPath);
   const mode = process.env.INPUT_MODE || "pr";
   const token = process.env.GITHUB_TOKEN || "";
   const tmpDir = join(repoRoot, ".patchsync-tmp");
   const targetDir = repoWorktreePath(tmpDir);
   const logger = await createLogger();
 
+  core.info(
+    `PatchSync startup: ${JSON.stringify({
+      repoRoot,
+      configPath,
+      resolvedConfigPath,
+      mode,
+      actionPath: process.env.PATCHSYNC_ACTION_PATH ?? "",
+      eventName: process.env.GITHUB_EVENT_NAME ?? "",
+    })}`,
+  );
   await mkdir(tmpDir, { recursive: true });
   const config = await loadConfig({ path: configPath, repoRoot });
   let status: "clean" | "repaired" | "failed" = "failed";
@@ -310,6 +321,26 @@ function truncate(value: string, length: number) {
   return value.length <= length ? value : `${value.slice(0, length)}...`;
 }
 
+function formatErrorDetails(error: unknown) {
+  if (error instanceof Error) {
+    const cause =
+      "cause" in error && error.cause
+        ? `\nCaused by:\n${formatErrorDetails(error.cause)}`
+        : "";
+    return [error.stack ?? error.message, cause].filter(Boolean).join("\n");
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error, null, 2);
+  } catch {
+    return String(error);
+  }
+}
+
 async function markSupported(config: PatchSyncConfig, commit: string) {
   const path = join(repoRoot, config.patches.latestSupportedCommitFile);
   await writeFile(path, `${commit}\n`, "utf8");
@@ -500,6 +531,8 @@ async function maybeCreateBreakingChangeIssue(options: {
 }
 
 main().catch((error) => {
+  const details = formatErrorDetails(error);
+  core.error(`PatchSync failed with details:\n${details}`);
   core.setOutput("status", "failed");
-  core.setFailed(error instanceof Error ? error.message : String(error));
+  core.setFailed(details);
 });
