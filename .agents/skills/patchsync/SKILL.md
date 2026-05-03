@@ -1,5 +1,5 @@
 ---
-name: patchsync-patch-workflows
+name: patchsync
 description: Use this skill whenever the user wants to prepare, repair, regenerate, or verify a PatchSync patch stack locally. Prefer the single `patchsync` CLI, fall back to the repo shell scripts only when needed, and keep edits scoped to patch maintenance files unless the user explicitly asks to change the tooling.
 ---
 
@@ -21,17 +21,8 @@ Prefer the single CLI:
 - `patchsync prepare [config] [patch_name]`
 - `patchsync capture <patch_name> [config]`
 - `patchsync verify [config]`
+If the cli is not globally installed please bunx @brrock/patchsync instead of patchsync directly.
 
-If the CLI has not been built in a repo clone:
-
-- `bun install`
-- `bun run build:cli`
-
-If the CLI is unavailable or the user explicitly wants the script layer, use:
-
-- `scripts/patchsync-local-prepare.sh [config] [patch_name]`
-- `scripts/patchsync-local-capture.sh <patch_name> [config]`
-- `scripts/patchsync-local-verify.sh [config]`
 
 ## Standard workflow
 
