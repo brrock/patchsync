@@ -7,7 +7,7 @@ It deterministically clones upstream, applies ordered patch directories, runs ve
 
 `LATEST_SUPPORTED_COMMIT` is informational only. PatchSync never reads it as workflow state.
 
-It can also build release artifacts from the patched upstream worktree and expose artifact paths as action outputs.
+It can also run release commands from the patched upstream worktree and expose any configured artifact paths as action outputs.
 
 ## Quick Start
 
@@ -136,7 +136,7 @@ Verification runs in this order:
 4. `verify.patched`
 5. root `patches/verification.sh`, if present
 6. each patch directory `verification.sh`, if present
-7. run `release.buildCommand` if release policy is active
+7. run `release.command` if release policy is active
 
 ## GitHub Action
 
@@ -262,7 +262,7 @@ When this is enabled, PatchSync runs the install command before baseline verific
 
 ## Releases
 
-PatchSync can build release artifacts from the patched upstream tree.
+PatchSync can run a release command from the patched upstream tree. That command can build artifacts, publish to npm, or do both.
 
 ```json
 {
@@ -270,11 +270,25 @@ PatchSync can build release artifacts from the patched upstream tree.
     "enabled": true,
     "when": "every_upstream_release",
     "prereleaseSource": "ignore",
-    "buildCommand": "bun run build",
+    "command": "bun run build",
     "artifacts": ["dist/**", "build/**"]
   }
 }
 ```
+
+Artifact collection is optional. If `release.artifacts` is set, PatchSync resolves matching files and exposes them through the action outputs. If you only want to publish, omit `artifacts`:
+
+```json
+{
+  "release": {
+    "enabled": true,
+    "when": "every_upstream_release",
+    "command": "npm publish"
+  }
+}
+```
+
+`release.buildCommand` is still accepted as a backward-compatible alias for `release.command`.
 
 Release policies:
 

@@ -103,9 +103,15 @@ export async function maybeBuildReleaseArtifacts(options: {
   cwd: string;
   upstream: ResolvedUpstream;
   logger: PatchSyncLogger;
-}) {
+}): Promise<{
+  executed: boolean;
+  built: boolean;
+  artifactPaths: string[];
+  reason: string;
+}> {
   if (!options.config.release.enabled) {
     return {
+      executed: false,
       built: false,
       artifactPaths: [] as string[],
       reason: "release disabled",
@@ -115,26 +121,34 @@ export async function maybeBuildReleaseArtifacts(options: {
   const triggered = releaseShouldRun(options.config.release.when);
   if (!triggered) {
     const reason = releaseReason(options.config.release.when);
-    core.info(`Skipping release build: ${reason}`);
-    options.logger.appendSummary("Release", { built: false, reason });
+    core.info(`Skipping release command: ${reason}`);
+    options.logger.appendSummary("Release", {
+      executed: false,
+      built: false,
+      reason,
+    });
     return {
+      executed: false,
       built: false,
       artifactPaths: [] as string[],
       reason,
     };
   }
 
-  if (!options.config.release.buildCommand) {
+  const releaseCommand =
+    options.config.release.command ?? options.config.release.buildCommand;
+
+  if (!releaseCommand) {
     throw new Error(
-      "release.buildCommand must be set when release.enabled is true",
+      "release.command must be set when release.enabled is true",
     );
   }
 
   core.info(
-    `Building release artifacts with policy ${options.config.release.when}`,
+    `Running release command with policy ${options.config.release.when}`,
   );
   const buildResult = await runCommand({
-    command: options.config.release.buildCommand,
+    command: releaseCommand,
     cwd: options.cwd,
     timeoutMs: 60 * 60_000,
   });
@@ -142,45 +156,50 @@ export async function maybeBuildReleaseArtifacts(options: {
   const buildSummary = {
     ok: buildResult.ok,
     code: buildResult.code,
-    command: options.config.release.buildCommand,
+    command: releaseCommand,
     policy: options.config.release.when,
     upstreamReleaseTag: options.upstream.releaseTag ?? null,
   };
-  core.info(`Release build: ${JSON.stringify(buildSummary)}`);
+  core.info(`Release command: ${JSON.stringify(buildSummary)}`);
 
   if (!buildResult.ok) {
     if (buildResult.stdout.trim()) {
       core.warning(
-        `Release build stdout:\n${truncate(buildResult.stdout, 4000)}`,
+        `Release command stdout:\n${truncate(buildResult.stdout, 4000)}`,
       );
     }
     if (buildResult.stderr.trim()) {
       core.warning(
-        `Release build stderr:\n${truncate(buildResult.stderr, 4000)}`,
+        `Release command stderr:\n${truncate(buildResult.stderr, 4000)}`,
       );
     }
-    throw new Error(`Release build failed with exit code ${buildResult.code}`);
+    throw new Error(`Release command failed with exit code ${buildResult.code}`);
   }
 
-  const artifactPaths = await collectArtifacts(
-    options.cwd,
-    options.config.release.artifacts,
-  );
-  if (artifactPaths.length === 0) {
-    throw new Error("No release artifacts matched release.artifacts");
+  let artifactPaths: string[] = [];
+  if (options.config.release.artifacts.length > 0) {
+    artifactPaths = await collectArtifacts(
+      options.cwd,
+      options.config.release.artifacts,
+    );
+    if (artifactPaths.length === 0) {
+      throw new Error("No release artifacts matched release.artifacts");
+    }
   }
 
   const summary = {
-    built: true,
+    executed: true,
+    built: artifactPaths.length > 0,
     policy: options.config.release.when,
     artifacts: artifactPaths.map((path) => relative(options.cwd, path)),
     upstreamReleaseTag: options.upstream.releaseTag ?? null,
   };
   options.logger.appendSummary("Release", summary);
-  core.info(`Release artifacts: ${JSON.stringify(summary)}`);
+  core.info(`Release result: ${JSON.stringify(summary)}`);
 
   return {
-    built: true,
+    executed: true,
+    built: artifactPaths.length > 0,
     artifactPaths,
     reason: releaseReason(options.config.release.when),
   };

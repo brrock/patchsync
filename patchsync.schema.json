@@ -91,6 +91,9 @@
           "enum": ["ignore", "include", "only"],
           "default": "ignore"
         },
+        "command": {
+          "type": "string"
+        },
         "buildCommand": {
           "type": "string"
         },

@@ -52,11 +52,13 @@ async function main() {
   let failureSummary = "";
   let upstreamReleaseTag = "";
   let artifactPaths: string[] = [];
+  let releaseExecuted = false;
   let repairableFailure = false;
   const upstream = await resolveUpstream({ config, token });
   upstreamReleaseTag = upstream.releaseTag ?? "";
   core.setOutput("release-trigger", upstream.releasePolicyReason);
   core.setOutput("upstream-release-tag", upstreamReleaseTag);
+  core.setOutput("release-executed", "false");
 
   try {
     try {
@@ -136,7 +138,9 @@ async function main() {
         upstream,
         logger,
       });
+      releaseExecuted = releaseResult.executed;
       artifactPaths = releaseResult.artifactPaths;
+      core.setOutput("release-executed", String(releaseResult.executed));
       core.setOutput("release-built", String(releaseResult.built));
       core.setOutput("artifact-paths", artifactPaths.join("\n"));
 
@@ -253,7 +257,9 @@ async function main() {
       upstream,
       logger,
     });
+    releaseExecuted = releaseResult.executed;
     artifactPaths = releaseResult.artifactPaths;
+    core.setOutput("release-executed", String(releaseResult.executed));
     core.setOutput("release-built", String(releaseResult.built));
     core.setOutput("artifact-paths", artifactPaths.join("\n"));
 
@@ -270,12 +276,14 @@ async function main() {
       latestCommit,
       failureSummary,
       upstreamReleaseTag,
+      releaseExecuted,
       artifactPaths,
     });
     core.info(
-      `PatchSync summary: ${JSON.stringify({ status, latestCommit, failureSummary, upstreamReleaseTag, artifactPaths })}`,
+      `PatchSync summary: ${JSON.stringify({ status, latestCommit, failureSummary, upstreamReleaseTag, releaseExecuted, artifactPaths })}`,
     );
     core.setOutput("status", status);
+    core.setOutput("release-executed", String(releaseExecuted));
     core.setOutput("release-built", String(artifactPaths.length > 0));
     core.setOutput("artifact-paths", artifactPaths.join("\n"));
     core.setOutput("upstream-release-tag", upstreamReleaseTag);

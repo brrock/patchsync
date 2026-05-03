@@ -56,12 +56,16 @@ outputs:
     value: "${{ steps.patchsync.outputs.pull-request-url }}"
 
   release-built:
-    description: "Whether release artifacts were built in this run"
+    description: "Whether release artifacts were produced in this run"
     value: "${{ steps.patchsync.outputs.release-built }}"
 
   artifact-paths:
-    description: "Newline-delimited list of built artifact paths"
+    description: "Newline-delimited list of produced artifact paths"
     value: "${{ steps.patchsync.outputs.artifact-paths }}"
+
+  release-executed:
+    description: "Whether the configured release command ran in this run"
+    value: "${{ steps.patchsync.outputs.release-executed }}"
 
   upstream-release-tag:
     description: "Resolved upstream release tag when release mode uses upstream releases"

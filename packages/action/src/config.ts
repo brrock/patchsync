@@ -26,8 +26,23 @@ const releaseSchema = z
       ])
       .default("every_upstream_commit"),
     prereleaseSource: z.enum(["ignore", "include", "only"]).default("ignore"),
+    command: z.string().optional(),
     buildCommand: z.string().optional(),
     artifacts: z.array(z.string()).default([]),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.command &&
+      value.buildCommand &&
+      value.command !== value.buildCommand
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["command"],
+        message:
+          "release.command and release.buildCommand must match when both are set",
+      });
+    }
   })
   .prefault({});
 

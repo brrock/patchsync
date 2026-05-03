@@ -260,7 +260,7 @@ export async function runInit(args: string[]): Promise<number> {
     "enabled": true,
     "when": "every_upstream_release",
     "prereleaseSource": "ignore",
-    "buildCommand": "bun run build",
+    "command": "bun run build",
     "artifacts": ["dist/**", "build/**"]
   },
   "agent": {
