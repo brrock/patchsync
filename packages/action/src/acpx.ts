@@ -131,9 +131,6 @@ Verification:
       ? [...globalArgs, options.config.agent.provider, "exec", prompt]
       : [...globalArgs, options.config.agent.provider, prompt];
 
-  core.info(
-    `Running ACPX repair via bun ${acpxScriptPath} with provider=${options.config.agent.provider} mode=${effectiveMode}`,
-  );
   const result = await runCommandArgs({
     argv: [
       "bun",
@@ -240,7 +237,6 @@ async function ensureSessionConfigured(options: {
   });
   const prefix = ["bun", acpxScriptPath, ...globalArgs];
 
-  core.info(`Ensuring ACPX session via bun ${acpxScriptPath}`);
   const ensureSession = await runCommandArgs({
     argv: [...prefix, options.config.agent.provider, "sessions", "ensure"],
     cwd: options.targetDir,
@@ -288,7 +284,6 @@ async function ensureAcpxInstalled(options: {
   logger: PatchSyncLogger;
 }) {
   const command = `bun install -g acpx@${options.config.agent.acpxVersion}`;
-  core.info(`Installing ACPX globally: ${command}`);
   const installResult = await runCommand({
     command,
     cwd: options.repoRoot,
@@ -308,7 +303,6 @@ async function ensureAcpxInstalled(options: {
     ok: installResult.ok,
     resolvedPath: whichResult.stdout.trim() || null,
   };
-  core.info(`ACPX install: ${JSON.stringify(summary)}`);
   if (installResult.stdout.trim()) {
     core.info(`ACPX install stdout:\n${truncate(installResult.stdout, 4000)}`);
   }
@@ -355,16 +349,6 @@ async function resolveAcpxScriptPath(options: {
       stdout: "",
       stderr: error instanceof Error ? error.message : String(error),
     }));
-
-    core.info(
-      `ACPX probe bun ${candidate}: ${JSON.stringify({ ok: probe.ok, code: probe.code })}`,
-    );
-    if (probe.stdout.trim()) {
-      core.info(`ACPX probe stdout:\n${truncate(probe.stdout, 1000)}`);
-    }
-    if (probe.stderr.trim()) {
-      core.warning(`ACPX probe stderr:\n${truncate(probe.stderr, 1000)}`);
-    }
 
     if (probe.ok) {
       return candidate;
