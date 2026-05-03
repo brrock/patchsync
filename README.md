@@ -9,7 +9,180 @@ It deterministically clones upstream, applies ordered patch directories, runs ve
 
 It can also build release artifacts from the patched upstream worktree and expose artifact paths as action outputs.
 
-Publishing behavior:
+## Quick Start
+
+Install the local CLI from npm:
+
+```bash
+bun add -g @brrock/patchsync
+```
+
+Or from a clone of this repo:
+
+```bash
+bun install
+bun run build:cli
+```
+
+Initialize a repo:
+
+```bash
+patchsync init .
+```
+
+This creates:
+
+- `patchsync.config.json`
+- `LATEST_SUPPORTED_COMMIT`
+- the initial `patches/` layout
+- `.github/workflows/patchsync.yml` if it does not already exist
+
+Set `PATCHSYNC_ACTION_REF` when running the CLI to change the generated `uses:` target.
+
+## Patch Layout
+
+```text
+patches/
+  verification.sh
+  patch.md
+  01-base-port/
+    patch.md
+    verification.sh
+    0001-change.patch
+  02-fix-build/
+    patch.md
+    0001-fix.patch
+```
+
+Patch directories are applied in lexicographic order. Root `patches/*.patch` files are supported, but the preferred format is one directory per patch.
+
+Use numeric prefixes in patch directory names so the apply order is obvious at a glance:
+
+```text
+patches/
+  01-base-port/
+  02-fix-build/
+  03-add-feature-flag/
+```
+
+PatchSync applies:
+
+1. root `patches/*.patch` files, sorted lexicographically
+2. patch directories, sorted lexicographically
+3. patch files within each directory, sorted lexicographically
+
+Those entries are applied cumulatively on top of each other:
+
+1. start from clean upstream
+2. apply entry 1
+3. apply entry 2 on top of the result of entry 1
+4. apply entry 3 on top of the result of entry 2
+5. continue until the stack is complete
+
+Show the exact order the CLI will apply with:
+
+```bash
+patchsync order patchsync.config.json
+```
+
+`patchsync order` determines this dynamically by scanning the current `patches/` directory and sorting what it finds.
+
+## Local Workflow
+
+The local CLI supports:
+
+- `patchsync init [root]`
+- `patchsync order [config]`
+- `patchsync prepare [config] [patch_name]`
+- `patchsync prepare [patch_name]`
+- `patchsync prepare [patch_order_number]`
+- `patchsync capture <patch_name> [config]`
+- `patchsync verify [config]`
+
+Typical flow for updating one patch:
+
+1. `patchsync order patchsync.config.json`
+2. `patchsync prepare 02-fix-build`
+3. edit files under `.patchsync-local/target`
+4. `patchsync capture 02-fix-build patchsync.config.json`
+5. `patchsync verify patchsync.config.json`
+
+Typical flow for creating a new patch at the end of the stack:
+
+1. `patchsync order patchsync.config.json`
+2. choose the next numeric prefix, for example `03-add-feature-flag`
+3. `patchsync prepare`
+4. edit files under `.patchsync-local/target`
+5. `patchsync capture 03-add-feature-flag patchsync.config.json`
+6. update `patches/03-add-feature-flag/patch.md`
+7. `patchsync verify patchsync.config.json`
+
+When updating an existing patch, `prepare` stops before that patch and applies every earlier patch in lexicographic order. For example:
+
+```bash
+patchsync prepare 02-fix-build
+patchsync prepare 2
+```
+
+That prepares upstream plus `01-*` patches, but not `02-fix-build` or anything after it. This keeps the captured diff scoped to the target patch.
+
+## Verification Order
+
+Verification runs in this order:
+
+1. `verify.baseline` on clean upstream
+2. apply every patch file
+3. install dependencies again if `dependencies.install.enabled` is true
+4. `verify.patched`
+5. root `patches/verification.sh`, if present
+6. each patch directory `verification.sh`, if present
+7. run `release.buildCommand` if release policy is active
+
+## GitHub Action
+
+```yaml
+name: PatchSync
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  patchsync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: brrock/patchsync@v1
+        id: patchsync
+        with:
+          config: patchsync.config.json
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PATCHSYNC_CODEX_AUTH_JSON: ${{ secrets.PATCHSYNC_CODEX_AUTH_JSON }}
+          PATCHSYNC_OPENCODE_AUTH_JSON: ${{ secrets.PATCHSYNC_OPENCODE_AUTH_JSON }}
+
+      - uses: actions/upload-artifact@v4
+        if: steps.patchsync.outputs.release-built == 'true'
+        with:
+          name: patchsync-artifacts
+          path: ${{ steps.patchsync.outputs.artifact-paths }}
+```
+
+## Publishing Behavior
+
+By default, clean upstream advances publish `LATEST_SUPPORTED_COMMIT` directly to the repository default branch, while repaired patch stacks open a PR.
+
+Publishing modes:
 
 - `pullRequest.cleanUpdates: "direct"`: clean upstream advances publish `LATEST_SUPPORTED_COMMIT` with a direct commit
 - `pullRequest.cleanUpdates: "pull_request"`: clean upstream advances open a PR
@@ -19,7 +192,7 @@ Publishing behavior:
 
 The action input `create-pr: false` only suppresses PR creation for that run. It does not change the configured publish mode to a direct push.
 
-## ACPX Agents
+## Agent Repair
 
 Configure the ACPX adapter and model in `patchsync.config.json`:
 
@@ -42,6 +215,7 @@ PatchSync has built-in install commands for these providers: `codex`, `claude`, 
 For custom providers, set `agent.install.command`.
 
 PatchSync invokes ACPX with `--approve-all --non-interactive-permissions fail` so repair turns can edit files and run verification on GitHub runners. `agent.model` maps to ACPX `--model`. For Codex, `agent.reasoningEffort` maps to `acpx codex set thought_level <value>` when `agent.mode` is `session`.
+
 During repair, PatchSync runs ACPX with JSON output enabled and emits parsed event summaries directly to the GitHub Action log and job summary.
 
 For file-based agent auth on GitHub runners:
@@ -114,199 +288,6 @@ For `every_upstream_release`, `prereleaseSource` can be:
 - `include`: latest release, stable or prerelease
 - `only`: prereleases only
 
-## Patch Directory Shape
-
-```text
-patches/
-  verification.sh
-  patch.md
-  01-base-port/
-    patch.md
-    verification.sh
-    0001-change.patch
-  02-fix-build/
-    patch.md
-    0001-fix.patch
-```
-
-Patch directories are applied in lexicographic order. Root `patches/*.patch` files are supported, but the preferred format is one directory per patch.
-
-Initialize the layout with:
-
-```bash
-patchsync init .
-```
-
-This also creates `.github/workflows/patchsync.yml` if it does not already exist.
-Set `PATCHSYNC_ACTION_REF` when running the CLI to change the generated `uses:` target.
-
-By default, clean upstream advances publish `LATEST_SUPPORTED_COMMIT` directly to the repository default branch, while repaired patch stacks open a PR. Set `pullRequest.cleanUpdates` to `pull_request` or `disabled` if you want different behavior for clean runs.
-
-Verification runs in this order:
-
-1. `verify.baseline` on clean upstream
-2. apply every patch file
-3. install dependencies again if `dependencies.install.enabled` is true
-4. `verify.patched`
-5. root `patches/verification.sh`, if present
-6. each patch directory `verification.sh`, if present
-7. run `release.buildCommand` if release policy is active
-
-## Local Patch Maintenance
-
-Install the local maintenance skill from this repo with:
-
-```bash
-bunx skills add brrock/path-sync
-```
-
-Install the local CLI package from npm with:
-
-```bash
-bun add -g @brrock/patchsync
-```
-
-If you are working from a clone of this repo instead:
-
-```bash
-bun install
-bun run build:cli
-```
-
-That gives you one CLI:
-
-- `patchsync`
-
-From a repo clone, the built entrypoints are:
-
-- `packages/cli/dist/main.js`
-
-Example usage:
-
-```bash
-patchsync init .
-patchsync order [config]
-patchsync prepare [config] [patch_name]
-patchsync capture <patch_name> [config]
-patchsync verify [config]
-```
-
-For local patch authoring and repair work:
-
-- `patchsync init [root]`
-- `patchsync order [config]`
-- `patchsync prepare [config] [patch_name]`
-- `patchsync prepare [patch_name]`
-- `patchsync prepare [patch_order_number]`
-- `patchsync capture <patch_name> [config]`
-- `patchsync verify [config]`
-
-Use numeric prefixes in patch directory names so the apply order is obvious at a glance:
-
-```text
-patches/
-  01-base-port/
-  02-fix-build/
-  03-add-feature-flag/
-```
-
-PatchSync applies:
-
-1. root `patches/*.patch` files, sorted lexicographically
-2. patch directories, sorted lexicographically
-3. patch files within each directory, sorted lexicographically
-
-Those entries are applied cumulatively on top of each other:
-
-1. start from clean upstream
-2. apply entry 1
-3. apply entry 2 on top of the result of entry 1
-4. apply entry 3 on top of the result of entry 2
-5. continue until the stack is complete
-
-Show the exact order the CLI will apply with:
-
-```bash
-patchsync order patchsync.config.json
-```
-
-`patchsync order` determines this dynamically by scanning the current `patches/` directory and sorting what it finds.
-
-Typical flow for updating one patch:
-
-1. `patchsync order patchsync.config.json`
-2. `patchsync prepare 02-fix-build`
-3. edit files under `.patchsync-local/target`
-4. `patchsync capture 02-fix-build patchsync.config.json`
-5. `patchsync verify patchsync.config.json`
-
-Typical flow for creating a new patch at the end of the stack:
-
-1. `patchsync order patchsync.config.json`
-2. choose the next numeric prefix, for example `03-add-feature-flag`
-3. `patchsync prepare`
-4. edit files under `.patchsync-local/target`
-5. `patchsync capture 03-add-feature-flag patchsync.config.json`
-6. update `patches/03-add-feature-flag/patch.md`
-7. `patchsync verify patchsync.config.json`
-
-When updating an existing patch, `prepare` stops before that patch and applies every earlier patch in lexicographic order. For example:
-
-```bash
-patchsync prepare 02-fix-build
-```
-
-That prepares upstream plus `01-*` patches, but not `02-fix-build` or anything after it. This keeps the captured diff scoped to the target patch.
-
-You can also select the target patch by the order number shown by `patchsync order`:
-
-```bash
-patchsync prepare 2
-```
-
-That means "prepare everything before entry 2 in the current dynamic order".
-
-## Workflow
-
-```yaml
-name: PatchSync
-
-on:
-  schedule:
-    - cron: "17 3 * * *"
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-
-jobs:
-  patchsync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: brrock/patchsync@v1
-        id: patchsync
-        with:
-          config: patchsync.config.json
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          PATCHSYNC_CODEX_AUTH_JSON: ${{ secrets.PATCHSYNC_CODEX_AUTH_JSON }}
-          PATCHSYNC_OPENCODE_AUTH_JSON: ${{ secrets.PATCHSYNC_OPENCODE_AUTH_JSON }}
-
-      - uses: actions/upload-artifact@v4
-        if: steps.patchsync.outputs.release-built == 'true'
-        with:
-          name: patchsync-artifacts
-          path: ${{ steps.patchsync.outputs.artifact-paths }}
-```
-
-
 ## Development
 
 Build everything:
@@ -315,7 +296,7 @@ Build everything:
 bun run build
 ```
 
-Build only the action bundle (minified):
+Build only the action bundle:
 
 ```bash
 bun run build:action
@@ -331,3 +312,5 @@ Package layout:
 
 - `packages/action/src` -> `packages/action/dist/index.js`
 - `packages/cli/src` -> `packages/cli/dist/main.js`
+
+For CLI-only usage details, see [packages/cli/README.md](/Volumes/SSD/projects/patchsync/packages/cli/README.md).
