@@ -9,5 +9,8 @@
   },
   "scripts": {
     "build": "bun build src/main.ts --target bun --outdir dist --minify --banner '#!/usr/bin/env bun'"
+  },
+  "devDependencies": {
+    "@brrock/patchsync-action": "workspace:*"
   }
 }

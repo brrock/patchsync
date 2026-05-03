@@ -1,4 +1,4 @@
-import { runLocalCommand, type LocalCommand } from "./run-script";
+import { runLocalCommand, type LocalCommand } from "./run-command";
 
 const LOCAL_COMMANDS: LocalCommand[] = ["init", "prepare", "capture", "verify"];
 

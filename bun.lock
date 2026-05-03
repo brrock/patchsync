@@ -10,7 +10,7 @@
     },
     "packages/action": {
       "name": "@brrock/patchsync-action",
-      "version": "0.1.1",
+      "version": "0.1.5",
       "bin": {
         "patchsync-action": "dist/main.js",
       },
@@ -30,6 +30,9 @@
       "version": "0.1.0",
       "bin": {
         "patchsync": "dist/main.js",
+      },
+      "devDependencies": {
+        "@brrock/patchsync-action": "workspace:*",
       },
     },
   },

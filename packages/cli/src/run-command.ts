@@ -1,9 +1,9 @@
 import { access, chmod, mkdir, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
-import { cloneTargetRepo } from "../../action/src/git";
-import { loadConfig } from "../../action/src/config";
-import { listPatchEntries } from "../../action/src/patches";
-import { runCommandArgs } from "../../action/src/shell";
+import { cloneTargetRepo } from "@brrock/patchsync-action/src/git";
+import { loadConfig } from "@brrock/patchsync-action/src/config";
+import { listPatchEntries } from "@brrock/patchsync-action/src/patches";
+import { runCommandArgs } from "@brrock/patchsync-action/src/shell";
 
 export type LocalCommand = "init" | "prepare" | "capture" | "verify";
 
